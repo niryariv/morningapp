@@ -11,6 +11,7 @@
   --reader-size: 20px;
   --serif: Iowan Old Style, Palatino Linotype, Book Antiqua, Palatino, Georgia, Noto Serif Hebrew, serif;
   --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, Noto Sans Hebrew, sans-serif;
+  --hebrew-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans Hebrew", "Arial Hebrew", Arial, sans-serif;
 }
 
 * {
@@ -320,6 +321,15 @@ h1 {
 
 .card[dir="rtl"] .card-footer {
   direction: rtl;
+}
+
+.card:lang(he) .card-title,
+.card:lang(he) .card-summary {
+  font-family: var(--hebrew-sans);
+}
+
+.card:lang(he) .card-title {
+  letter-spacing: normal;
 }
 
 .card.featured {
