@@ -1,6 +1,6 @@
 {
   "date": "2026-08-16",
-  "generated_at": "2026-08-16T08:04:01Z",
+  "generated_at": "2026-08-16T08:14:40Z",
   "is_fallback": false,
   "items": [
     {
@@ -30,6 +30,20 @@
       "published": null,
       "reading_minutes": null,
       "language": "he"
+    },
+    {
+      "id": "classic-mill-living-truth",
+      "category": "classics",
+      "label": "From the classics",
+      "title": "John Stuart Mill — On Liberty",
+      "summary": "However true it may be, if it is not fully, frequently, and fearlessly discussed, it will be held as a dead dogma, not a living truth.",
+      "url": "https://www.gutenberg.org/ebooks/34901",
+      "source": "Chapter II · original English",
+      "image": null,
+      "image_alt": null,
+      "published": null,
+      "reading_minutes": 1,
+      "language": "en"
     },
     {
       "id": "feed-15f2893a37de",
@@ -86,20 +100,6 @@
       "published": "2026-08-14",
       "reading_minutes": null,
       "language": "en"
-    },
-    {
-      "id": "feed-b758bd3f78bf",
-      "category": "science",
-      "label": "Science",
-      "title": "מפרשי אור עשויים לפתוח דרך אל הכוכבים – אבל LHS 1140b עדיין רחוק מאות שנים",
-      "summary": "גילוי אטמוספירה סביב כוכב הלכת הסלעי LHS 1140b החזיר לכותרות את האפשרות לשגר חלליות זעירות למערכות שמש אחרות. מזעור אלקטרוניקה, מפרשי אור ומערכי לייזר רבי־עוצמה הופכים את הרעיון לנושא מחקר הנדסי ממשי, אך גם במהירות של 20% ממהירות האור המסע לכוכב הלכת, המרוחק 48 שנות אור, יימשך כ־240 שנה",
-      "url": "https://www.hayadan.org.il/laser-lightsails-interstellar-travel",
-      "source": "הידען",
-      "image": null,
-      "image_alt": null,
-      "published": "2026-08-13",
-      "reading_minutes": null,
-      "language": "he"
     }
   ]
 }

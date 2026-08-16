@@ -1,6 +1,6 @@
 # Morning
 
-Morning is a small, calm reading edition assembled once a day. It offers a finite mix of science, mathematics, history, nature, imagery, essays, and one Hebrew Wikipedia discovery—with no infinite scroll, urgency, engagement metrics, accounts, analytics, or paid services.
+Morning is a small, calm reading edition assembled once a day. It offers a finite mix of science, mathematics, history, nature, imagery, essays, one Hebrew Wikipedia discovery, and one short excerpt from the classics—with no infinite scroll, urgency, engagement metrics, accounts, analytics, or paid services.
 
 The interface is English. Articles may be English or Hebrew; Hebrew cards use right-to-left typography automatically. The reading size is adjustable and saved locally on the device. Light and dark colors follow the device preference.
 
@@ -34,10 +34,19 @@ Source definitions live together in [`scripts/config.py`](scripts/config.py):
 - Aeon RSS
 - הידען (Hayadan) RSS
 - Hebrew Wikipedia featured-article category through the MediaWiki API
+- A locally bundled shelf of 31 public-domain classics excerpts
 
 Every source is public and free. The generator uses only feed/API metadata—titles, excerpts, links, and provided image URLs. It does not bypass paywalls, scrape full articles, or republish publisher content.
 
 To add or remove an RSS source, edit `SOURCES` in `scripts/config.py`. Each entry supplies a publisher name, feed URL, default category, language (`en` or `he`), and source-quality weight. Set `long_read: true` for essay feeds; selection allows at most one such item per edition.
+
+### Classics curation and rights
+
+`data/classics.json` contains exactly 31 short passages from seven verified works and traditions: Plato's *Apology* (Benjamin Jowett), Confucius's *Analects* (James Legge), Laozi's *Tao Teh King* (James Legge), *The Dhammapada* (F. Max Müller), *The Song Celestial* / *Bhagavad-Gita* (Sir Edwin Arnold), Mary Wollstonecraft's *A Vindication of the Rights of Woman*, and John Stuart Mill's *On Liberty*.
+
+The wording and translator attribution were checked against the linked Project Gutenberg editions; line breaks and occasional typographic punctuation are normalized for compact card display. Each dataset entry records its author or attributed work, work title, passage locator, translator where applicable, era, tradition, authoritative edition URL, and rights note. Project Gutenberg identifies these editions as public domain in the United States. Copyright terms differ by country, so downstream publishers outside the United States should check their local law.
+
+The shelf is bundled with the repository and read locally during generation: there is no classics API, runtime scraping, LLM rewriting, or paid dependency. Excerpts are capped at 280 characters. To curate an entry, faithfully transcribe text from a clearly identified public-domain edition, retain its translator and locator, link the edition's primary record, document any punctuation normalization, and keep the shelf above the 30-day history window so a fresh passage is always available.
 
 ## Selection
 
@@ -47,9 +56,10 @@ The final pass:
 
 1. Removes malformed entries and normalized URLs seen during the previous 30 days.
 2. Keeps APOD and a date-seeded Hebrew Wikipedia featured-article discovery when available.
-3. Reserves room for nature/geography and at most one long read.
-4. Limits category and publisher repetition.
-5. Chooses up to seven high-quality cards; it never adds weak material merely to hit a quota.
+3. Adds one date-rotated classics excerpt not used during the prior 30 days.
+4. Reserves room for nature/geography and at most one long read.
+5. Limits category and publisher repetition.
+6. Chooses up to seven high-quality cards; it never adds weak material merely to hit a quota.
 
 A failed source is logged and skipped. If every source fails, the last successful edition remains published. On a brand-new installation with no previous edition, `data/fallback.json` supplies a small bilingual shelf edition.
 
@@ -115,7 +125,9 @@ scripts/config.py             Feeds and scoring terms
 scripts/feeds.py              RSS/Atom normalization
 scripts/apod.py               NASA APOD API
 scripts/wikipedia.py          Filtered Hebrew discovery
+scripts/classics.py           Deterministic local classics rotation
 scripts/utils.py              Fetching, text, URLs, and JSON helpers
+data/classics.json            Curated excerpt text, attribution, and rights notes
 data/                         Canonical current, fallback, and history data
 docs/                         Complete static site published to Pages
 ```
@@ -127,4 +139,5 @@ docs/                         Complete static site published to Pages
 - Wikipedia discovery is selected deterministically from the first API page of Hebrew featured articles; this is a high-quality pool, but not the encyclopedia's entire featured collection.
 - External images are referenced from their publishers and can disappear or reject hotlinking; the text card remains intact.
 - There is no translation. English and Hebrew articles appear in their original language.
+- The bundled classics rights notes follow Project Gutenberg's United States determinations; reuse elsewhere may require a local copyright check.
 - The PWA uses a scalable SVG icon. Some older mobile launchers may prefer separately supplied PNG icons.

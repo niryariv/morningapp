@@ -5,13 +5,13 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 
-from scripts import apod, feeds, update, utils, wikipedia
+from scripts import apod, classics, feeds, update, utils, wikipedia
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -202,6 +202,45 @@ class CollectorTests(unittest.TestCase):
             wikipedia.collect_wikipedia(Mock(), set(), "2026-08-16")
 
 
+class ClassicsTests(unittest.TestCase):
+    def test_curated_shelf_is_short_public_domain_and_spans_traditions(self):
+        entries = classics.load_classics(ROOT / "data" / "classics.json")
+        self.assertEqual(len(entries), 31)
+        self.assertEqual(len({entry["id"] for entry in entries}), 31)
+        self.assertGreaterEqual(len({entry["tradition"] for entry in entries}), 7)
+        for entry in entries:
+            self.assertLessEqual(len(entry["excerpt"]), 280)
+            self.assertTrue(entry["source_url"].startswith("https://www.gutenberg.org/ebooks/"))
+            self.assertIn("Public domain in the USA", entry["rights"])
+
+    def test_rotation_is_deterministic_and_avoids_prior_thirty_excerpts(self):
+        start = datetime(2026, 1, 1)
+        seen: list[str] = []
+        chosen: list[str] = []
+        for offset in range(31):
+            day = (start + timedelta(days=offset)).date().isoformat()
+            item = classics.collect_classic(day, set(seen[-30:]))
+            chosen.append(item["id"])
+            seen.append(item["id"])
+        self.assertEqual(len(set(chosen)), 31)
+        self.assertEqual(
+            classics.collect_classic("2026-01-01", set())["id"],
+            classics.collect_classic("2026-01-01", set())["id"],
+        )
+
+    def test_collector_exposes_attribution_in_existing_card_schema(self):
+        item = classics.collect_classic("2026-08-16", set())
+        public = utils.as_public_item(item)
+        self.assertEqual(public["category"], "classics")
+        self.assertEqual(public["label"], "From the classics")
+        self.assertIn(" · ", public["source"])
+        self.assertEqual(public["reading_minutes"], 1)
+        self.assertEqual(set(public), {
+            "id", "category", "label", "title", "summary", "url", "source",
+            "image", "image_alt", "published", "reading_minutes", "language",
+        })
+
+
 class SelectionAndHistoryTests(unittest.TestCase):
     def test_selection_deduplicates_normalized_urls_and_limits_long_reads(self):
         items = [
@@ -213,6 +252,29 @@ class SelectionAndHistoryTests(unittest.TestCase):
         chosen = update.select_items(items, set())
         self.assertEqual(sum(item["url"].startswith("https://example.com/a") for item in chosen), 1)
         self.assertLessEqual(sum(bool(item["is_long_read"]) for item in chosen), 1)
+
+    def test_classic_is_selected_even_when_its_edition_url_was_seen(self):
+        classic = candidate(
+            "https://www.gutenberg.org/ebooks/3330",
+            id="classic-analects-test",
+            category="classics",
+            label="From the classics",
+            source="Book I · trans. James Legge",
+            is_classic=True,
+            score=6,
+        )
+        second_classic = dict(
+            classic,
+            id="classic-analects-other",
+            url="https://www.gutenberg.org/ebooks/216",
+            source="Chapter 8 · trans. James Legge",
+        )
+        chosen = update.select_items(
+            [classic, second_classic, candidate("https://example.com/a")],
+            {classic["url"]},
+        )
+        self.assertIn(classic, chosen)
+        self.assertEqual(sum(item.get("is_classic", False) for item in chosen), 1)
 
     def test_history_reads_only_prior_thirty_days_and_survives_malformed_urls(self):
         tz = ZoneInfo("Asia/Jerusalem")
@@ -231,6 +293,21 @@ class SelectionAndHistoryTests(unittest.TestCase):
                 urls, titles = update.load_recent_history(day)
         self.assertEqual(urls, {"https://example.com/a"})
         self.assertEqual(titles, {"אלף"})
+
+    def test_classic_history_reads_ids_from_only_prior_thirty_days(self):
+        tz = ZoneInfo("Asia/Jerusalem")
+        day = datetime(2026, 8, 16, tzinfo=tz)
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            history = data_dir / "history"
+            history.mkdir()
+            utils.write_json(history / "2026-08-15.json", {"items": [
+                {"id": "classic-recent"}, {"id": 42}, {"id": "feed-other"},
+            ]})
+            utils.write_json(history / "2026-07-16.json", {"items": [{"id": "classic-old"}]})
+            with patch.object(update, "DATA_DIR", data_dir):
+                ids = update.load_recent_classic_ids(day)
+        self.assertEqual(ids, {"classic-recent"})
 
 
 class PublicationTests(unittest.TestCase):
@@ -281,7 +358,8 @@ class PublicationTests(unittest.TestCase):
             self.assertEqual(update.build_edition("2026-08-16"), 0)
         edition = utils.read_json(self.data / "today.json")
         self.assertFalse(edition["is_fallback"])
-        self.assertEqual([item["url"] for item in edition["items"]], ["https://example.com/live"])
+        self.assertIn("https://example.com/live", [item["url"] for item in edition["items"]])
+        self.assertEqual(sum(item["id"].startswith("classic-") for item in edition["items"]), 1)
 
     def test_malformed_previous_date_cannot_escape_history_directory(self):
         utils.write_json(self.data / "today.json", {"date": "../../escaped", "items": []})

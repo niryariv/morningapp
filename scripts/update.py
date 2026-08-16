@@ -15,12 +15,14 @@ from zoneinfo import ZoneInfo
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from apod import collect_apod
+    from classics import collect_classic
     from config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
     from feeds import collect_all_feeds
     from utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
     from wikipedia import collect_wikipedia
 else:
     from .apod import collect_apod
+    from .classics import collect_classic
     from .config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
     from .feeds import collect_all_feeds
     from .utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
@@ -54,40 +56,66 @@ def load_recent_history(edition_day: datetime) -> tuple[set[str], set[str]]:
     return urls, wikipedia_titles
 
 
+def load_recent_classic_ids(edition_day: datetime) -> set[str]:
+    """Return excerpt IDs published during the same 30-day history window."""
+    ids: set[str] = set()
+    for offset in range(1, HISTORY_DAYS + 1):
+        path = DATA_DIR / "history" / f"{(edition_day - timedelta(days=offset)).date().isoformat()}.json"
+        edition = read_json(path, {})
+        if not isinstance(edition, dict) or not isinstance(edition.get("items"), list):
+            continue
+        for item in edition["items"]:
+            if not isinstance(item, dict):
+                continue
+            item_id = item.get("id")
+            if isinstance(item_id, str) and item_id.startswith("classic-"):
+                ids.add(item_id)
+    return ids
+
+
 def select_items(candidates: list[dict[str, Any]], seen_urls: set[str]) -> list[dict[str, Any]]:
     unique: dict[str, dict[str, Any]] = {}
     for item in candidates:
         if not isinstance(item, dict):
             continue
         url = normalize_url(item.get("url", ""))
-        if not url or url in seen_urls or item.get("score", 0) < MIN_QUALITY_SCORE:
+        is_classic = bool(item.get("is_classic"))
+        if not url or (url in seen_urls and not is_classic) or item.get("score", 0) < MIN_QUALITY_SCORE:
             continue
-        previous = unique.get(url)
+        # Several curated excerpts may cite the same source edition. Their
+        # excerpt IDs, rather than the shared book URL, define novelty.
+        dedup_key = f"classic:{item.get('id', '')}" if is_classic else url
+        previous = unique.get(dedup_key)
         if not previous or item.get("score", 0) > previous.get("score", 0):
-            unique[url] = item
+            unique[dedup_key] = item
 
     pool = sorted(unique.values(), key=lambda item: (item.get("score", 0), bool(item.get("image"))), reverse=True)
     selected: list[dict[str, Any]] = []
     categories: Counter[str] = Counter()
     sources: Counter[str] = Counter()
     long_read_used = False
+    classic_used = False
 
     def add(item: dict[str, Any]) -> bool:
-        nonlocal long_read_used
+        nonlocal classic_used, long_read_used
         if item in selected or len(selected) >= MAX_ITEMS:
             return False
         if item.get("is_long_read") and long_read_used:
+            return False
+        if item.get("is_classic") and classic_used:
             return False
         selected.append(item)
         categories[item["category"]] += 1
         sources[item["source"]] += 1
         long_read_used = long_read_used or bool(item.get("is_long_read"))
+        classic_used = classic_used or bool(item.get("is_classic"))
         return True
 
-    # These two form the edition's reliable visual and bilingual anchors.
+    # These form the edition's reliable visual, bilingual, and reflective anchors.
     for predicate in (
         lambda item: item.get("featured"),
         lambda item: item.get("wikipedia"),
+        lambda item: item.get("is_classic"),
     ):
         match = next((item for item in pool if predicate(item)), None)
         if match:
@@ -165,9 +193,18 @@ def build_edition(edition_date: str | None = None) -> int:
 
     log(f"Morning update — {day}\n")
     seen_urls, seen_wikipedia_titles = load_recent_history(edition_day)
+    seen_classic_ids = load_recent_classic_ids(edition_day)
     session = get_session()
     candidates: list[dict[str, Any]] = []
     successful_sources = 0
+    classic_candidate: dict[str, Any] | None = None
+
+    try:
+        classic_candidate = collect_classic(day, seen_classic_ids)
+        candidates.append(classic_candidate)
+        log("Classics shelf: OK")
+    except Exception as exc:
+        log(f"Classics shelf: ERROR — {exc}")
 
     try:
         candidates.append(collect_apod(session, day))
@@ -204,6 +241,11 @@ def build_edition(edition_date: str | None = None) -> int:
         fallback["date"] = day
         fallback["generated_at"] = utc_now()
         fallback["is_fallback"] = True
+        if classic_candidate and not any(
+            isinstance(item, dict) and item.get("id", "").startswith("classic-")
+            for item in fallback["items"]
+        ):
+            fallback["items"].append(as_public_item(classic_candidate))
         archive_and_publish(fallback)
         log("No sources available; published the bundled fallback edition.")
         return 0
