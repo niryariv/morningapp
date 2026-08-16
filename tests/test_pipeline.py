@@ -665,6 +665,19 @@ class PwaTests(unittest.TestCase):
         self.assertIn("No different mix is available yet.", app)
         self.assertIn("Couldn’t shuffle. Check your connection, then try again.", app)
 
+    def test_footer_credits_authors_and_links_to_repository(self):
+        html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        styles = (ROOT / "docs" / "style.css").read_text(encoding="utf-8")
+        worker = (ROOT / "docs" / "sw.js").read_text(encoding="utf-8")
+
+        self.assertIn("By Nir Yariv and Codex. Summer 2026", html)
+        self.assertIn(
+            'href="https://github.com/niryariv/morningapp">View source on GitHub</a>',
+            html,
+        )
+        self.assertIn("calc(var(--reader-size) * 0.68)", styles)
+        self.assertIn('const CACHE = "morning-shell-v6";', worker)
+
 
 if __name__ == "__main__":
     unittest.main()

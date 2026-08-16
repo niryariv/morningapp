@@ -468,13 +468,23 @@ h1 {
 .site-footer {
   padding: 2rem 0 max(3rem, env(safe-area-inset-bottom));
   color: var(--ink-soft);
-  font-size: 0.62rem;
+  font-size: clamp(0.75rem, calc(var(--reader-size) * 0.68), 1.05rem);
   line-height: 1.5;
   text-align: center;
 }
 
 .site-footer p {
   margin: 0.15rem 0;
+}
+
+.site-footer .site-credit {
+  margin-top: 0.7rem;
+  text-wrap: balance;
+}
+
+.site-credit a {
+  color: var(--accent);
+  font-weight: 650;
 }
 
 .sr-only {
