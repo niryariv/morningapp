@@ -138,6 +138,33 @@ class CollectorTests(unittest.TestCase):
             items = feeds.collect_feed(Mock(), source)
         self.assertEqual([item["title"] for item in items], ["Healthy"])
 
+    @patch("scripts.feeds.fetch")
+    def test_aeon_byline_boilerplate_is_removed(self, mocked_fetch):
+        mocked_fetch.return_value = FakeResponse(content=b"")
+        parsed = SimpleNamespace(bozo=False, entries=[{
+            "title": "A thoughtful essay",
+            "link": "https://aeon.co/essays/a-thoughtful-essay",
+            "summary": (
+                "A detailed public summary that is comfortably long enough for a useful Morning card. "
+                "- by Example Author Read on Aeon"
+            ),
+        }])
+        source = {
+            "name": "Aeon",
+            "feed": "https://aeon.co/feed.rss",
+            "category": "ideas",
+            "language": "en",
+            "weight": 4,
+            "long_read": True,
+            "long_read_path": "/essays/",
+        }
+        with patch("scripts.feeds.feedparser.parse", return_value=parsed):
+            items = feeds.collect_feed(Mock(), source)
+        self.assertEqual(
+            items[0]["summary"],
+            "A detailed public summary that is comfortably long enough for a useful Morning card.",
+        )
+
     def test_scoring_does_not_penalize_war_inside_software(self):
         source = {"category": "science", "weight": 4}
         _, parts = feeds._score(source, "Software for astronomy", "A useful tool", None)

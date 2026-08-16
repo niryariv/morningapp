@@ -111,6 +111,12 @@ def collect_feed(session: Any, source: dict[str, Any]) -> list[dict[str, Any]]:
                 summary,
                 flags=re.IGNORECASE,
             ).strip()
+            summary = re.sub(
+                r"\s+[-–—]\s+by\s+.+?\s+Read on Aeon\s*$",
+                "",
+                summary,
+                flags=re.IGNORECASE,
+            ).strip()
             if not title or not url or len(summary) < 55:
                 continue
             image = _entry_image(entry, url)
