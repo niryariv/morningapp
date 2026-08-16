@@ -45,19 +45,8 @@ def load_classics(path: Path = CLASSICS_PATH) -> list[dict[str, Any]]:
     return validated
 
 
-def collect_classic(edition_date: str, seen_ids: set[str]) -> dict[str, Any]:
-    """Return the date-rotated first excerpt not used in the prior history window."""
-    edition_day = date.fromisoformat(edition_date)
-    entries = load_classics()
-    start = edition_day.toordinal() % len(entries)
-    entry = next(
-        (entries[(start + offset) % len(entries)] for offset in range(len(entries))
-         if entries[(start + offset) % len(entries)]["id"] not in seen_ids),
-        None,
-    )
-    if entry is None:
-        raise ValueError("all classics excerpts occur in recent history")
-
+def classic_as_candidate(entry: dict[str, Any]) -> dict[str, Any]:
+    """Convert one validated shelf entry to the common candidate schema."""
     title = entry["work"] if entry["author"] == entry["work"] else f"{entry['author']} — {entry['work']}"
     attribution = entry["locator"]
     if entry["translator"]:
@@ -83,3 +72,18 @@ def collect_classic(edition_date: str, seen_ids: set[str]) -> dict[str, Any]:
         "is_long_read": False,
         "is_classic": True,
     }
+
+
+def collect_classic(edition_date: str, seen_ids: set[str]) -> dict[str, Any]:
+    """Return the date-rotated first excerpt not used in the prior history window."""
+    edition_day = date.fromisoformat(edition_date)
+    entries = load_classics()
+    start = edition_day.toordinal() % len(entries)
+    entry = next(
+        (entries[(start + offset) % len(entries)] for offset in range(len(entries))
+         if entries[(start + offset) % len(entries)]["id"] not in seen_ids),
+        None,
+    )
+    if entry is None:
+        raise ValueError("all classics excerpts occur in recent history")
+    return classic_as_candidate(entry)

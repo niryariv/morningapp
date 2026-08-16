@@ -126,6 +126,8 @@ Morning is installable from supported desktop and mobile browsers. The manifest 
 
 The small service worker precaches the app shell, icon set, archive index, and today's edition when it installs. It then caches successfully opened edition files. This allows today's edition and the most recently visited archive entries to remain readable offline after the first successful visit. Offline navigation falls back only to the cached app page; missing non-navigation resources fail normally. Remote publisher images may not be available offline, and missing images are removed without breaking the card.
 
+The Shuffle button draws a new finite seven-card mix from a generated local shelf. It keeps one classic, one poem, and five other discoveries while preferring category and source variety and excluding the cards currently on screen. The shelf combines recent editions, the resilient fallback collection, and the bundled public-domain classics and poetry, so it works from the first deployment and is precached for offline use.
+
 ## Repository map
 
 ```text

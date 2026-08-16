@@ -317,6 +317,61 @@ class PoetryTests(unittest.TestCase):
         self.assertIn(public["language"], {"en", "he"})
 
 
+class ShuffleTests(unittest.TestCase):
+    def test_generated_shelf_is_public_unique_and_useful_on_first_day(self):
+        shelf = update.build_shuffle_shelf()
+        today = utils.read_json(ROOT / "data" / "today.json")["items"]
+        current_ids = {item["id"] for item in today}
+        alternatives = [item for item in shelf if item["id"] not in current_ids]
+
+        self.assertEqual(len({item["id"] for item in shelf}), len(shelf))
+        self.assertEqual(
+            sum(item["category"] == "classics" for item in shelf), len(classics.load_classics()),
+        )
+        self.assertEqual(
+            sum(item["category"] == "poetry" for item in shelf), len(poetry.load_poetry()),
+        )
+        self.assertGreaterEqual(
+            sum(item["category"] not in {"classics", "poetry"} for item in alternatives),
+            5,
+        )
+        public_fields = set(utils.as_public_item({}))
+        self.assertTrue(all(set(item) == public_fields for item in shelf))
+
+    def test_published_shuffle_shelf_matches_generated_data(self):
+        source = utils.read_json(ROOT / "data" / "shuffle.json")
+        published = utils.read_json(ROOT / "docs" / "data" / "shuffle.json")
+        self.assertEqual(source, published)
+        self.assertEqual(source["items"], update.build_shuffle_shelf())
+
+    def test_browser_selector_builds_two_valid_nonrepeating_mixes(self):
+        script = r'''
+          const fs = require("fs");
+          global.window = {};
+          eval(fs.readFileSync("docs/shuffle.js", "utf8"));
+          const pool = JSON.parse(fs.readFileSync("docs/data/shuffle.json", "utf8")).items;
+          const today = JSON.parse(fs.readFileSync("docs/data/today.json", "utf8")).items;
+          const random = () => 0.37;
+          const first = window.MorningShuffle.chooseMix(pool, today, random);
+          const second = window.MorningShuffle.chooseMix(pool, first, random);
+          const check = (mix, prior) => {
+            if (!mix || mix.length !== 7) throw new Error("mix must contain seven items");
+            if (new Set(mix.map((item) => item.id)).size !== 7) throw new Error("duplicate IDs");
+            if (mix.filter((item) => item.category === "classics").length !== 1) throw new Error("classic anchor");
+            if (mix.filter((item) => item.category === "poetry").length !== 1) throw new Error("poetry anchor");
+            const priorIds = new Set(prior.map((item) => item.id));
+            if (mix.some((item) => priorIds.has(item.id))) throw new Error("immediate duplicate");
+          };
+          check(first, today);
+          check(second, first);
+          if (window.MorningShuffle.chooseMix(first, first, random) !== null) throw new Error("missing no-alternate state");
+        '''
+        result = subprocess.run(
+            ["node", "-e", script], cwd=ROOT, text=True, capture_output=True, check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+
 class SelectionAndHistoryTests(unittest.TestCase):
     def test_selection_deduplicates_normalized_urls_and_limits_long_reads(self):
         items = [
@@ -590,12 +645,25 @@ class PwaTests(unittest.TestCase):
         self.assertIn('name="theme-color" media="(prefers-color-scheme: dark)"', html)
         self.assertIn('navigator.serviceWorker.register("./sw.js")', app)
         for resource in (
-            "./index.html", "./style.css", "./app.js", "./manifest.webmanifest",
-            "./data/today.json", "./data/archive.json", "./icons/morning-512.png",
+            "./index.html", "./style.css", "./shuffle.js", "./app.js", "./manifest.webmanifest",
+            "./data/today.json", "./data/shuffle.json", "./data/archive.json", "./icons/morning-512.png",
         ):
             self.assertIn(f'"{resource}"', worker)
         self.assertIn('event.request.mode === "navigate"', worker)
         self.assertIn('caches.match("./index.html")', worker)
+
+    def test_shuffle_control_has_accessible_states_and_race_guard(self):
+        html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
+        self.assertIn('id="shuffle-edition"', html)
+        self.assertIn('aria-busy="false"', html)
+        self.assertIn('id="shuffle-status"', html)
+        self.assertIn('role="status" aria-live="polite"', html)
+        self.assertIn("if (isShuffling || !currentEdition) return;", app)
+        self.assertIn("if (event.detail > 1) return;", app)
+        self.assertIn('elements.shuffle.setAttribute("aria-busy", String(busy))', app)
+        self.assertIn("No different mix is available yet.", app)
+        self.assertIn("Couldn’t shuffle. Check your connection, then try again.", app)
 
 
 if __name__ == "__main__":

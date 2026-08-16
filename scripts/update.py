@@ -15,16 +15,16 @@ from zoneinfo import ZoneInfo
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from apod import collect_apod
-    from classics import collect_classic
-    from poetry import collect_poem
+    from classics import classic_as_candidate, collect_classic, load_classics
+    from poetry import collect_poem, load_poetry, poem_as_candidate
     from config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
     from feeds import collect_all_feeds
     from utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
     from wikipedia import collect_wikipedia
 else:
     from .apod import collect_apod
-    from .classics import collect_classic
-    from .poetry import collect_poem
+    from .classics import classic_as_candidate, collect_classic, load_classics
+    from .poetry import collect_poem, load_poetry, poem_as_candidate
     from .config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
     from .feeds import collect_all_feeds
     from .utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
@@ -204,6 +204,38 @@ def sync_public_data() -> None:
             shutil.copyfile(source, history_target / source.name)
             dates.append(source.stem)
     write_json(DOCS_DATA_DIR / "archive.json", {"dates": dates})
+
+    shuffle_items = build_shuffle_shelf()
+    shuffle = {"items": shuffle_items}
+    write_json(DATA_DIR / "shuffle.json", shuffle)
+    write_json(DOCS_DATA_DIR / "shuffle.json", shuffle)
+
+
+def build_shuffle_shelf() -> list[dict[str, Any]]:
+    """Build a static, offline-capable pool for alternate seven-card mixes."""
+    items: list[dict[str, Any]] = []
+
+    for path in (
+        DATA_DIR / "today.json",
+        *sorted((DATA_DIR / "history").glob("????-??-??.json"), reverse=True)[:HISTORY_DAYS],
+        DATA_DIR / "fallback.json",
+    ):
+        edition = read_json(path, {})
+        if isinstance(edition, dict) and isinstance(edition.get("items"), list):
+            items.extend(item for item in edition["items"] if isinstance(item, dict))
+
+    # The bundled public-domain shelves make shuffle useful on the very first
+    # deployed day, before the rolling archive has accumulated alternatives.
+    items.extend(as_public_item(classic_as_candidate(entry)) for entry in load_classics())
+    items.extend(as_public_item(poem_as_candidate(entry)) for entry in load_poetry())
+
+    unique: dict[str, dict[str, Any]] = {}
+    for item in items:
+        item_id = item.get("id")
+        if not isinstance(item_id, str) or not item_id.strip():
+            continue
+        unique.setdefault(item_id, as_public_item(item))
+    return list(unique.values())
 
 
 def build_edition(edition_date: str | None = None) -> int:

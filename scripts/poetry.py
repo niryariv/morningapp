@@ -52,25 +52,8 @@ def load_poetry(path: Path = POETRY_PATH) -> list[dict[str, Any]]:
     return validated
 
 
-def collect_poem(edition_date: str, seen_ids: set[str]) -> dict[str, Any]:
-    """Return a deterministic, language-balanced poem absent from recent history."""
-    edition_day = date.fromisoformat(edition_date)
-    entries = load_poetry()
-    target_language = "he" if edition_day.toordinal() % 2 else "en"
-    language_entries = [entry for entry in entries if entry["language"] == target_language]
-    if not language_entries:
-        raise ValueError(f"poetry shelf has no {target_language} entries")
-
-    start = (edition_day.toordinal() // 2) % len(language_entries)
-    entry = next(
-        (language_entries[(start + offset) % len(language_entries)]
-         for offset in range(len(language_entries))
-         if language_entries[(start + offset) % len(language_entries)]["id"] not in seen_ids),
-        None,
-    )
-    if entry is None:
-        raise ValueError(f"all {target_language} poetry excerpts occur in recent history")
-
+def poem_as_candidate(entry: dict[str, Any]) -> dict[str, Any]:
+    """Convert one validated shelf entry to the common candidate schema."""
     title = f"{entry['author']} — {entry['work']}"
     attribution = f"{entry['locator']} · {entry['source_name']}"
     if entry["translator"]:
@@ -94,3 +77,24 @@ def collect_poem(edition_date: str, seen_ids: set[str]) -> dict[str, Any]:
         "is_long_read": False,
         "is_poetry": True,
     }
+
+
+def collect_poem(edition_date: str, seen_ids: set[str]) -> dict[str, Any]:
+    """Return a deterministic, language-balanced poem absent from recent history."""
+    edition_day = date.fromisoformat(edition_date)
+    entries = load_poetry()
+    target_language = "he" if edition_day.toordinal() % 2 else "en"
+    language_entries = [entry for entry in entries if entry["language"] == target_language]
+    if not language_entries:
+        raise ValueError(f"poetry shelf has no {target_language} entries")
+
+    start = (edition_day.toordinal() // 2) % len(language_entries)
+    entry = next(
+        (language_entries[(start + offset) % len(language_entries)]
+         for offset in range(len(language_entries))
+         if language_entries[(start + offset) % len(language_entries)]["id"] not in seen_ids),
+        None,
+    )
+    if entry is None:
+        raise ValueError(f"all {target_language} poetry excerpts occur in recent history")
+    return poem_as_candidate(entry)

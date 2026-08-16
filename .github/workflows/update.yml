@@ -41,14 +41,16 @@ jobs:
         run: |
           python -m json.tool data/today.json >/dev/null
           python -m json.tool docs/data/today.json >/dev/null
+          python -m json.tool docs/data/shuffle.json >/dev/null
           python -m json.tool docs/data/archive.json >/dev/null
           cmp data/today.json docs/data/today.json
+          cmp data/shuffle.json docs/data/shuffle.json
 
       - name: Commit generated editions
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/today.json data/history docs/data
+          git add data/today.json data/shuffle.json data/history docs/data
           if git diff --cached --quiet; then
             echo "No edition changes to commit."
           else

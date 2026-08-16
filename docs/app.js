@@ -17,6 +17,9 @@
     smaller: document.querySelector("#type-smaller"),
     reset: document.querySelector("#type-reset"),
     larger: document.querySelector("#type-larger"),
+    shuffle: document.querySelector("#shuffle-edition"),
+    shuffleLabel: document.querySelector("#shuffle-label"),
+    shuffleStatus: document.querySelector("#shuffle-status"),
   };
 
   const typeSizes = [17, 19, 21, 23, 25];
@@ -25,6 +28,9 @@
   let typeIndex = readTypePreference();
   let archiveDates = [];
   let activeDate = null;
+  let currentEdition = null;
+  let shufflePool = null;
+  let isShuffling = false;
 
   function readTypePreference() {
     try {
@@ -169,6 +175,7 @@
   }
 
   function renderEdition(edition) {
+    currentEdition = edition;
     activeDate = edition.date;
     elements.date.textContent = longDate(edition.date);
     elements.title.textContent = edition.items.length === 7
@@ -214,6 +221,12 @@
   }
 
   async function loadEdition(requestedDate, moveFocus = false) {
+    currentEdition = null;
+    elements.shuffle.disabled = true;
+    elements.shuffleStatus.textContent = "";
+    elements.older.disabled = true;
+    elements.newer.disabled = true;
+    elements.today.disabled = true;
     elements.status.hidden = false;
     elements.ending.hidden = true;
     elements.items.replaceChildren();
@@ -228,6 +241,7 @@
       else url.searchParams.delete("date");
       window.history.replaceState({}, "", url);
       if (moveFocus) elements.title.focus();
+      elements.shuffle.disabled = false;
     } catch (_error) {
       // A stale bookmark or a partially published archive must not strand the
       // reader on an edition that can never load. Today may still be cached.
@@ -236,6 +250,52 @@
         return;
       }
       showError();
+    }
+  }
+
+  function setShuffleBusy(busy) {
+    elements.shuffle.disabled = busy || !currentEdition;
+    elements.shuffle.setAttribute("aria-busy", String(busy));
+    elements.shuffleLabel.textContent = busy ? "Shuffling…" : "Shuffle";
+    if (busy) {
+      elements.older.disabled = true;
+      elements.newer.disabled = true;
+      elements.today.disabled = true;
+    } else {
+      updateArchiveControls();
+    }
+  }
+
+  async function shuffleEdition() {
+    if (isShuffling || !currentEdition) return;
+    isShuffling = true;
+    setShuffleBusy(true);
+    elements.shuffleStatus.textContent = "Finding another mix…";
+    let noAlternate = false;
+    let didShuffle = false;
+
+    try {
+      if (!shufflePool) {
+        const shelf = await fetchJson("./data/shuffle.json");
+        if (!shelf || !Array.isArray(shelf.items)) throw new Error("invalid shuffle shelf");
+        shufflePool = shelf.items;
+      }
+      const mix = window.MorningShuffle?.chooseMix(shufflePool, currentEdition.items);
+      if (!mix) {
+        noAlternate = true;
+        elements.shuffleStatus.textContent = "No different mix is available yet.";
+        return;
+      }
+      renderEdition({ ...currentEdition, items: mix });
+      didShuffle = true;
+      elements.shuffleStatus.textContent = "A fresh mix is ready.";
+    } catch (_error) {
+      elements.shuffleStatus.textContent = "Couldn’t shuffle. Check your connection, then try again.";
+    } finally {
+      isShuffling = false;
+      setShuffleBusy(false);
+      if (noAlternate) elements.shuffle.disabled = true;
+      if (didShuffle) elements.shuffle.focus();
     }
   }
 
@@ -263,6 +323,10 @@
     elements.smaller.addEventListener("click", () => applyTypeSize(typeIndex - 1, true));
     elements.reset.addEventListener("click", () => applyTypeSize(defaultTypeIndex, true));
     elements.larger.addEventListener("click", () => applyTypeSize(typeIndex + 1, true));
+    elements.shuffle.addEventListener("click", (event) => {
+      if (event.detail > 1) return;
+      shuffleEdition();
+    });
     elements.older.addEventListener("click", () => loadEdition(elements.older.dataset.date, true));
     elements.newer.addEventListener("click", () => loadEdition(elements.newer.dataset.date, true));
     elements.today.addEventListener("click", () => loadEdition(null, true));
