@@ -1,22 +1,8 @@
 {
   "date": "2026-08-16",
-  "generated_at": "2026-08-16T07:17:38Z",
+  "generated_at": "2026-08-16T07:35:08Z",
   "is_fallback": false,
   "items": [
-    {
-      "id": "apod-2026-08-16",
-      "category": "astronomy",
-      "label": "Image of the day",
-      "title": "Milky Way over Yellowstone",
-      "summary": "The Milky Way was not created by an evaporating lake. The colorful pool of water, about 10 meters across, is known as Silex Spring and is located in Yellowstone National Park in Wyoming, USA. Illuminated artificially, the colors are caused by layers of bacteria that grow in the hot spring. Steam rises off the spring, heated by underground magma associated with the Yellowstone Hotspot. Unrelated and far in the distance, the central band of our Milky Way Galaxy arches high overhead, a band lit by…",
-      "url": "https://apod.nasa.gov/apod/ap260816.html",
-      "source": "NASA APOD",
-      "image": "https://apod.nasa.gov/apod/image/2608/mwyellowstone_lane_960.jpg",
-      "image_alt": "Milky Way over Yellowstone",
-      "published": "2026-08-16",
-      "reading_minutes": null,
-      "language": "en"
-    },
     {
       "id": "wikipedia-a3d8bc5b276c",
       "category": "discovery",
@@ -98,6 +84,20 @@
       "image": null,
       "image_alt": null,
       "published": "2026-08-13",
+      "reading_minutes": null,
+      "language": "he"
+    },
+    {
+      "id": "feed-d158632a20b6",
+      "category": "science",
+      "label": "Science",
+      "title": "ווב זיהה מועמד ל״חור שחור דמוי כוכב״ בשחר הקוסמי",
+      "summary": "העצם MoM-BH*-1 נראה כפי שהיה 660 מיליון שנה בלבד לאחר המפץ הגדול. ניתוח האור שלו מצביע על חור שחור צעיר העטוף במעטפת מימן עצומה וצפופה, המקנה לו מראה ספקטרלי של כוכב. הממצא עשוי לסייע בהסברת ״הנקודות האדומות הקטנות״ שגילה טלסקופ החלל ג׳יימס ווב – אך לפי שעה מדובר בפרשנות המבוססת על מודל ולא בזיהוי ודאי של סוג עצם חדש",
+      "url": "https://www.hayadan.org.il/black-hole-star-cosmic-dawn-jwst",
+      "source": "הידען",
+      "image": null,
+      "image_alt": null,
+      "published": "2026-08-16",
       "reading_minutes": null,
       "language": "he"
     }
