@@ -1,8 +1,22 @@
 {
   "date": "2026-08-16",
-  "generated_at": "2026-08-16T08:36:18Z",
+  "generated_at": "2026-08-16T08:37:19Z",
   "is_fallback": false,
   "items": [
+    {
+      "id": "apod-2026-08-16",
+      "category": "astronomy",
+      "label": "Image of the day",
+      "title": "Milky Way over Yellowstone",
+      "summary": "The Milky Way was not created by an evaporating lake. The colorful pool of water, about 10 meters across, is known as Silex Spring and is located in Yellowstone National Park in Wyoming, USA. Illuminated artificially, the colors are caused by layers of bacteria that grow in the hot spring. Steam rises off the spring, heated by underground magma associated with the Yellowstone Hotspot. Unrelated and far in the distance, the central band of our Milky Way Galaxy arches high overhead, a band lit by…",
+      "url": "https://apod.nasa.gov/apod/ap260816.html",
+      "source": "NASA APOD",
+      "image": "https://apod.nasa.gov/apod/image/2608/mwyellowstone_lane_960.jpg",
+      "image_alt": "Milky Way over Yellowstone",
+      "published": "2026-08-16",
+      "reading_minutes": null,
+      "language": "en"
+    },
     {
       "id": "wikipedia-eec5bb5bbcf9",
       "category": "discovery",
@@ -84,20 +98,6 @@
       "image": "https://assets.science.nasa.gov/dynamicimage/assets/science/esd/eo/images/iotd/2026/how-the-tide-turns-at-the-mouth-of-the-elbe/germanytide_oli2_20250815.jpg",
       "image_alt": "How the Tide Turns at the Mouth of the Elbe",
       "published": "2026-08-06",
-      "reading_minutes": null,
-      "language": "en"
-    },
-    {
-      "id": "feed-b6daf16807a5",
-      "category": "discovery",
-      "label": "Discovery",
-      "title": "Marine Biologists Solved a Wildlife Mystery From the Walkway of the Golden Gate Bridge: How the Harbor Porpoise Mates",
-      "summary": "The dolphin-like marine mammals returned to San Francisco Bay in 2008 after a decades-long absence from the area. Scientists took the rare opportunity to closely observe their behavior, and what they uncovered might help at-risk porpoise populations",
-      "url": "https://www.smithsonianmag.com/science-nature/marine-biologists-solved-a-wildlife-mystery-from-the-walkway-of-the-golden-gate-bridge-how-the-harbor-porpoise-mates-180989163",
-      "source": "Smithsonian Magazine",
-      "image": "https://th-thumbnailer.cdn-si-edu.com/BZADNoYaWQsC6ePEWADzv0tXVC4=/420x240/filters:focal(529x363:530x364)/https://tf-cmsv2-smithsonianmag-media.s3.amazonaws.com/filer_public/cd/e0/cde0be65-76a1-4453-a9e9-74aebe7e59c7/gettyimages-1298809492.jpg",
-      "image_alt": "Marine Biologists Solved a Wildlife Mystery From the Walkway of the Golden Gate Bridge: How the Harbor Porpoise Mates",
-      "published": "2026-08-14",
       "reading_minutes": null,
       "language": "en"
     }
