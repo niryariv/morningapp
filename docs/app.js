@@ -148,6 +148,7 @@
 
     card.dir = itemDirection(item);
     card.lang = item.language || "en";
+    if (item.category === "poetry") card.classList.add("poetry");
     if (item.category === "astronomy" && index === 0) card.classList.add("featured");
     label.textContent = item.label || item.category || "Discovery";
     titleLink.textContent = title;

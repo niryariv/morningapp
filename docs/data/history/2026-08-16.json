@@ -1,22 +1,8 @@
 {
   "date": "2026-08-16",
-  "generated_at": "2026-08-16T08:17:08Z",
+  "generated_at": "2026-08-16T08:36:18Z",
   "is_fallback": false,
   "items": [
-    {
-      "id": "apod-2026-08-16",
-      "category": "astronomy",
-      "label": "Image of the day",
-      "title": "Milky Way over Yellowstone",
-      "summary": "The Milky Way was not created by an evaporating lake. The colorful pool of water, about 10 meters across, is known as Silex Spring and is located in Yellowstone National Park in Wyoming, USA. Illuminated artificially, the colors are caused by layers of bacteria that grow in the hot spring. Steam rises off the spring, heated by underground magma associated with the Yellowstone Hotspot. Unrelated and far in the distance, the central band of our Milky Way Galaxy arches high overhead, a band lit by…",
-      "url": "https://apod.nasa.gov/apod/ap260816.html",
-      "source": "NASA APOD",
-      "image": "https://apod.nasa.gov/apod/image/2608/mwyellowstone_lane_960.jpg",
-      "image_alt": "Milky Way over Yellowstone",
-      "published": "2026-08-16",
-      "reading_minutes": null,
-      "language": "en"
-    },
     {
       "id": "wikipedia-eec5bb5bbcf9",
       "category": "discovery",
@@ -39,6 +25,20 @@
       "summary": "However true it may be, if it is not fully, frequently, and fearlessly discussed, it will be held as a dead dogma, not a living truth.",
       "url": "https://www.gutenberg.org/ebooks/34901",
       "source": "Chapter II · original English",
+      "image": null,
+      "image_alt": null,
+      "published": null,
+      "reading_minutes": 1,
+      "language": "en"
+    },
+    {
+      "id": "poetry-en-iliad-03",
+      "category": "poetry",
+      "label": "Poem",
+      "title": "Homer — The Iliad",
+      "summary": "Like leaves on trees the race of man is found,\nNow green in youth, now withering on the ground;\nAnother race the following spring supplies;\nThey fall successive, and successive rise:\nSo generations in their course decay;\nSo flourish these, when those are pass’d away.",
+      "url": "https://www.gutenberg.org/ebooks/6130",
+      "source": "Book VI · trans. Alexander Pope · Project Gutenberg",
       "image": null,
       "image_alt": null,
       "published": null,

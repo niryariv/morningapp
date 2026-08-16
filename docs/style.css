@@ -260,6 +260,10 @@ h1 {
   color: color-mix(in srgb, var(--ink) 86%, var(--paper));
 }
 
+.card.poetry .card-summary {
+  white-space: pre-line;
+}
+
 .card-media {
   position: relative;
   overflow: hidden;

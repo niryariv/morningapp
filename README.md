@@ -1,6 +1,6 @@
 # Morning
 
-Morning is a small, calm reading edition assembled once a day. It offers a finite mix of science, mathematics, history, nature, imagery, essays, one Hebrew Wikipedia discovery, and one short excerpt from the classics—with no infinite scroll, urgency, engagement metrics, accounts, analytics, or paid services.
+Morning is a small, calm reading edition assembled once a day. It offers a finite mix of science, mathematics, history, nature, imagery, essays, one Hebrew Wikipedia discovery, one short excerpt from the classics, and one poem—with no infinite scroll, urgency, engagement metrics, accounts, analytics, or paid services.
 
 The interface is English. Articles may be English or Hebrew; Hebrew cards use right-to-left typography automatically. The reading size is adjustable and saved locally on the device. Light and dark colors follow the device preference.
 
@@ -35,6 +35,7 @@ Source definitions live together in [`scripts/config.py`](scripts/config.py):
 - הידען (Hayadan) RSS
 - Hebrew Wikipedia featured-article category through the MediaWiki API
 - A locally bundled shelf of 31 public-domain classics excerpts
+- A locally bundled bilingual shelf of 32 public-domain poetry excerpts
 
 Every source is public and free. The generator uses only feed/API metadata—titles, excerpts, links, and provided image URLs. It does not bypass paywalls, scrape full articles, or republish publisher content.
 
@@ -48,6 +49,12 @@ The wording and translator attribution were checked against the linked Project G
 
 The shelf is bundled with the repository and read locally during generation: there is no classics API, runtime scraping, LLM rewriting, or paid dependency. Excerpts are capped at 280 characters. To curate an entry, faithfully transcribe text from a clearly identified public-domain edition, retain its translator and locator, link the edition's primary record, document any punctuation normalization, and keep the shelf above the 30-day history window so a fresh passage is always available.
 
+### Poetry curation and rights
+
+`data/poetry.json` contains 32 line-preserving poems and excerpts, balanced evenly between English and Hebrew. It includes two complete short poems in each language: William Blake's *The Lily*, Emily Dickinson's *A Word*, and Yehuda Halevi's *לבי במזרח* and *שער שיבה בהראות יחידי*. Longer-work selections include Alexander Pope's verse translations of Homer's *Iliad* and *Odyssey*, checked against Project Gutenberg eBooks #6130 and #3160. The remaining Hebrew selections draw from exact work pages for poems by Haim Nahman Bialik, Rachel Bluwstein, Shaul Tchernichovsky, and Yehuda Halevi in Project Ben-Yehuda. Every included Ben-Yehuda page is explicitly marked `נחלת הכלל` (public domain); permission-only works are not included.
+
+Each entry records author, work, passage locator, translator where applicable, language, source edition, stable primary URL, and rights status. Complete works carry an explicit `is_complete: true` marker; the loader treats its absence as an excerpt and validates the field as boolean. Original line breaks are retained in the JSON and rendered as verse on the card. The shelf is local and has no runtime scraping or paid dependency. Project Gutenberg's rights determination is for the United States; reuse elsewhere should be checked against local law.
+
 ## Selection
 
 Each feed candidate gets transparent heuristic scores for interest, timelessness, visual value, positivity, and publisher quality. English and Hebrew penalty terms lower the score for violence, political conflict, catastrophe, crime, and other high-arousal topics. No machine learning or external classifier is used.
@@ -57,9 +64,10 @@ The final pass:
 1. Removes malformed entries and normalized URLs seen during the previous 30 days.
 2. Keeps APOD and a date-seeded Hebrew Wikipedia featured-article discovery when available.
 3. Adds one date-rotated classics excerpt not used during the prior 30 days.
-4. Reserves room for nature/geography and at most one long read.
-5. Limits category and publisher repetition.
-6. Chooses up to seven high-quality cards; it never adds weak material merely to hit a quota.
+4. Adds one date-rotated poem, alternating English and Hebrew, not used during the prior 30 days.
+5. Reserves room for nature/geography and at most one long read.
+6. Limits category and publisher repetition.
+7. Chooses up to seven high-quality cards; it never adds weak material merely to hit a quota.
 
 A failed source is logged and skipped. If every source fails, the last successful edition remains published. On a brand-new installation with no previous edition, `data/fallback.json` supplies a small bilingual shelf edition.
 
@@ -126,8 +134,10 @@ scripts/feeds.py              RSS/Atom normalization
 scripts/apod.py               NASA APOD API
 scripts/wikipedia.py          Filtered Hebrew discovery
 scripts/classics.py           Deterministic local classics rotation
+scripts/poetry.py             Deterministic bilingual poetry rotation
 scripts/utils.py              Fetching, text, URLs, and JSON helpers
 data/classics.json            Curated excerpt text, attribution, and rights notes
+data/poetry.json              Curated EN/HE verse, source editions, and rights notes
 data/                         Canonical current, fallback, and history data
 docs/                         Complete static site published to Pages
 ```
@@ -140,4 +150,5 @@ docs/                         Complete static site published to Pages
 - External images are referenced from their publishers and can disappear or reject hotlinking; the text card remains intact.
 - There is no translation. English and Hebrew articles appear in their original language.
 - The bundled classics rights notes follow Project Gutenberg's United States determinations; reuse elsewhere may require a local copyright check.
+- The bundled poetry shelf uses Gutenberg's United States determinations and Ben-Yehuda's explicit public-domain labels; downstream reuse should still check applicable local law.
 - The PWA uses a scalable SVG icon. Some older mobile launchers may prefer separately supplied PNG icons.

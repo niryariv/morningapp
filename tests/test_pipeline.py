@@ -11,7 +11,7 @@ from types import SimpleNamespace
 from unittest.mock import Mock, patch
 from zoneinfo import ZoneInfo
 
-from scripts import apod, classics, feeds, update, utils, wikipedia
+from scripts import apod, classics, feeds, poetry, update, utils, wikipedia
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -241,6 +241,80 @@ class ClassicsTests(unittest.TestCase):
         })
 
 
+class PoetryTests(unittest.TestCase):
+    def test_curated_shelf_is_balanced_multiline_and_public_domain(self):
+        entries = poetry.load_poetry(ROOT / "data" / "poetry.json")
+        self.assertEqual(len(entries), 32)
+        self.assertEqual(len({entry["id"] for entry in entries}), 32)
+        self.assertEqual(
+            {language: sum(entry["language"] == language for entry in entries) for language in {"en", "he"}},
+            {"en": 16, "he": 16},
+        )
+        self.assertEqual(
+            {language: sum(entry["is_complete"] and entry["language"] == language for entry in entries)
+             for language in {"en", "he"}},
+            {"en": 2, "he": 2},
+        )
+        for entry in entries:
+            self.assertLessEqual(len(entry["excerpt"]), 360)
+            self.assertIn("\n", entry["excerpt"])
+            if entry["language"] == "en":
+                self.assertTrue(entry["source_url"].startswith("https://www.gutenberg.org/ebooks/"))
+                self.assertIn("Public domain in the USA", entry["rights"])
+            else:
+                self.assertTrue(entry["source_url"].startswith("https://benyehuda.org/read/"))
+                self.assertIn("נחלת הכלל", entry["rights"])
+
+    def test_complete_poems_use_exact_primary_work_records(self):
+        complete = {
+            entry["id"]: entry for entry in poetry.load_poetry(ROOT / "data" / "poetry.json")
+            if entry["is_complete"]
+        }
+        self.assertEqual(set(complete), {
+            "poetry-en-blake-lily-complete",
+            "poetry-en-dickinson-word-complete",
+            "poetry-he-halevi-libbi-complete",
+            "poetry-he-halevi-sear-complete",
+        })
+        self.assertTrue(all(entry["locator"].startswith("Complete poem") for entry in complete.values()))
+        self.assertEqual(complete["poetry-he-halevi-libbi-complete"]["source_url"], "https://benyehuda.org/read/8780")
+        self.assertEqual(complete["poetry-he-halevi-sear-complete"]["source_url"], "https://benyehuda.org/read/9113")
+
+    def test_complete_marker_must_be_boolean(self):
+        entries = poetry.load_poetry(ROOT / "data" / "poetry.json")
+        entries[0]["is_complete"] = "yes"
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "poetry.json"
+            utils.write_json(path, entries)
+            with self.assertRaisesRegex(ValueError, "is_complete must be boolean"):
+                poetry.load_poetry(path)
+
+    def test_rotation_alternates_languages_and_avoids_prior_thirty_excerpts(self):
+        start = datetime(2026, 1, 1)
+        seen: list[str] = []
+        languages: list[str] = []
+        for offset in range(32):
+            day = (start + timedelta(days=offset)).date().isoformat()
+            item = poetry.collect_poem(day, set(seen[-30:]))
+            seen.append(item["id"])
+            languages.append(item["language"])
+        self.assertEqual(len(set(seen)), 32)
+        self.assertTrue(all(left != right for left, right in zip(languages, languages[1:])))
+        self.assertEqual(
+            poetry.collect_poem("2026-01-01", set())["id"],
+            poetry.collect_poem("2026-01-01", set())["id"],
+        )
+
+    def test_collector_exposes_attribution_in_existing_card_schema(self):
+        item = poetry.collect_poem("2026-08-16", set())
+        public = utils.as_public_item(item)
+        self.assertEqual(public["category"], "poetry")
+        self.assertEqual(public["label"], "Poem")
+        self.assertIn("Project", public["source"])
+        self.assertIn("\n", public["summary"])
+        self.assertIn(public["language"], {"en", "he"})
+
+
 class SelectionAndHistoryTests(unittest.TestCase):
     def test_selection_deduplicates_normalized_urls_and_limits_long_reads(self):
         items = [
@@ -276,6 +350,29 @@ class SelectionAndHistoryTests(unittest.TestCase):
         self.assertIn(classic, chosen)
         self.assertEqual(sum(item.get("is_classic", False) for item in chosen), 1)
 
+    def test_one_poem_and_one_classic_are_selected_despite_shared_seen_urls(self):
+        classic = candidate(
+            "https://www.gutenberg.org/ebooks/3330",
+            id="classic-test", category="classics", is_classic=True, score=6,
+        )
+        poems = [
+            candidate(
+                "https://www.gutenberg.org/ebooks/6130",
+                id=f"poetry-en-test-{number}", category="poetry", is_poetry=True, score=7,
+            )
+            for number in (1, 2)
+        ]
+        chosen = update.select_items(
+            [classic, *poems, *[
+                candidate(f"https://example.com/{letter}", source=f"Source {letter}", category=f"topic-{letter}")
+                for letter in "abcdefghij"
+            ]],
+            {classic["url"], poems[0]["url"]},
+        )
+        self.assertEqual(len(chosen), update.MAX_ITEMS)
+        self.assertEqual(sum(item.get("is_classic", False) for item in chosen), 1)
+        self.assertEqual(sum(item.get("is_poetry", False) for item in chosen), 1)
+
     def test_history_reads_only_prior_thirty_days_and_survives_malformed_urls(self):
         tz = ZoneInfo("Asia/Jerusalem")
         day = datetime(2026, 8, 16, tzinfo=tz)
@@ -308,6 +405,21 @@ class SelectionAndHistoryTests(unittest.TestCase):
             with patch.object(update, "DATA_DIR", data_dir):
                 ids = update.load_recent_classic_ids(day)
         self.assertEqual(ids, {"classic-recent"})
+
+    def test_poetry_history_reads_ids_from_only_prior_thirty_days(self):
+        tz = ZoneInfo("Asia/Jerusalem")
+        day = datetime(2026, 8, 16, tzinfo=tz)
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp)
+            history = data_dir / "history"
+            history.mkdir()
+            utils.write_json(history / "2026-08-15.json", {"items": [
+                {"id": "poetry-he-recent"}, {"id": 42}, {"id": "feed-other"},
+            ]})
+            utils.write_json(history / "2026-07-16.json", {"items": [{"id": "poetry-en-old"}]})
+            with patch.object(update, "DATA_DIR", data_dir):
+                ids = update.load_recent_poetry_ids(day)
+        self.assertEqual(ids, {"poetry-he-recent"})
 
 
 class PublicationTests(unittest.TestCase):
@@ -349,6 +461,9 @@ class PublicationTests(unittest.TestCase):
         self.assertEqual(edition["date"], "2026-08-16")
         self.assertTrue(edition["is_fallback"])
         self.assertTrue(edition["items"])
+        self.assertLessEqual(len(edition["items"]), update.MAX_ITEMS)
+        self.assertEqual(sum(item["id"].startswith("classic-") for item in edition["items"]), 1)
+        self.assertEqual(sum(item["id"].startswith("poetry-") for item in edition["items"]), 1)
 
     def test_partial_outage_still_publishes_available_content(self):
         available = candidate("https://example.com/live", featured=True)
@@ -360,6 +475,8 @@ class PublicationTests(unittest.TestCase):
         self.assertFalse(edition["is_fallback"])
         self.assertIn("https://example.com/live", [item["url"] for item in edition["items"]])
         self.assertEqual(sum(item["id"].startswith("classic-") for item in edition["items"]), 1)
+        self.assertEqual(sum(item["id"].startswith("poetry-") for item in edition["items"]), 1)
+        self.assertLessEqual(len(edition["items"]), update.MAX_ITEMS)
 
     def test_malformed_previous_date_cannot_escape_history_directory(self):
         utils.write_json(self.data / "today.json", {"date": "../../escaped", "items": []})

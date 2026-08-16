@@ -16,6 +16,7 @@ if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from apod import collect_apod
     from classics import collect_classic
+    from poetry import collect_poem
     from config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
     from feeds import collect_all_feeds
     from utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
@@ -23,6 +24,7 @@ if __package__ in (None, ""):
 else:
     from .apod import collect_apod
     from .classics import collect_classic
+    from .poetry import collect_poem
     from .config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
     from .feeds import collect_all_feeds
     from .utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
@@ -73,6 +75,23 @@ def load_recent_classic_ids(edition_day: datetime) -> set[str]:
     return ids
 
 
+def load_recent_poetry_ids(edition_day: datetime) -> set[str]:
+    """Return poetry excerpt IDs published during the 30-day history window."""
+    ids: set[str] = set()
+    for offset in range(1, HISTORY_DAYS + 1):
+        path = DATA_DIR / "history" / f"{(edition_day - timedelta(days=offset)).date().isoformat()}.json"
+        edition = read_json(path, {})
+        if not isinstance(edition, dict) or not isinstance(edition.get("items"), list):
+            continue
+        for item in edition["items"]:
+            if not isinstance(item, dict):
+                continue
+            item_id = item.get("id")
+            if isinstance(item_id, str) and item_id.startswith("poetry-"):
+                ids.add(item_id)
+    return ids
+
+
 def select_items(candidates: list[dict[str, Any]], seen_urls: set[str]) -> list[dict[str, Any]]:
     unique: dict[str, dict[str, Any]] = {}
     for item in candidates:
@@ -80,11 +99,13 @@ def select_items(candidates: list[dict[str, Any]], seen_urls: set[str]) -> list[
             continue
         url = normalize_url(item.get("url", ""))
         is_classic = bool(item.get("is_classic"))
-        if not url or (url in seen_urls and not is_classic) or item.get("score", 0) < MIN_QUALITY_SCORE:
+        is_poetry = bool(item.get("is_poetry"))
+        is_curated = is_classic or is_poetry
+        if not url or (url in seen_urls and not is_curated) or item.get("score", 0) < MIN_QUALITY_SCORE:
             continue
         # Several curated excerpts may cite the same source edition. Their
         # excerpt IDs, rather than the shared book URL, define novelty.
-        dedup_key = f"classic:{item.get('id', '')}" if is_classic else url
+        dedup_key = f"curated:{item.get('id', '')}" if is_curated else url
         previous = unique.get(dedup_key)
         if not previous or item.get("score", 0) > previous.get("score", 0):
             unique[dedup_key] = item
@@ -95,20 +116,24 @@ def select_items(candidates: list[dict[str, Any]], seen_urls: set[str]) -> list[
     sources: Counter[str] = Counter()
     long_read_used = False
     classic_used = False
+    poetry_used = False
 
     def add(item: dict[str, Any]) -> bool:
-        nonlocal classic_used, long_read_used
+        nonlocal classic_used, poetry_used, long_read_used
         if item in selected or len(selected) >= MAX_ITEMS:
             return False
         if item.get("is_long_read") and long_read_used:
             return False
         if item.get("is_classic") and classic_used:
             return False
+        if item.get("is_poetry") and poetry_used:
+            return False
         selected.append(item)
         categories[item["category"]] += 1
         sources[item["source"]] += 1
         long_read_used = long_read_used or bool(item.get("is_long_read"))
         classic_used = classic_used or bool(item.get("is_classic"))
+        poetry_used = poetry_used or bool(item.get("is_poetry"))
         return True
 
     # These form the edition's reliable visual, bilingual, and reflective anchors.
@@ -116,6 +141,7 @@ def select_items(candidates: list[dict[str, Any]], seen_urls: set[str]) -> list[
         lambda item: item.get("featured"),
         lambda item: item.get("wikipedia"),
         lambda item: item.get("is_classic"),
+        lambda item: item.get("is_poetry"),
     ):
         match = next((item for item in pool if predicate(item)), None)
         if match:
@@ -194,10 +220,12 @@ def build_edition(edition_date: str | None = None) -> int:
     log(f"Morning update — {day}\n")
     seen_urls, seen_wikipedia_titles = load_recent_history(edition_day)
     seen_classic_ids = load_recent_classic_ids(edition_day)
+    seen_poetry_ids = load_recent_poetry_ids(edition_day)
     session = get_session()
     candidates: list[dict[str, Any]] = []
     successful_sources = 0
     classic_candidate: dict[str, Any] | None = None
+    poetry_candidate: dict[str, Any] | None = None
 
     try:
         classic_candidate = collect_classic(day, seen_classic_ids)
@@ -205,6 +233,13 @@ def build_edition(edition_date: str | None = None) -> int:
         log("Classics shelf: OK")
     except Exception as exc:
         log(f"Classics shelf: ERROR — {exc}")
+
+    try:
+        poetry_candidate = collect_poem(day, seen_poetry_ids)
+        candidates.append(poetry_candidate)
+        log("Poetry shelf: OK")
+    except Exception as exc:
+        log(f"Poetry shelf: ERROR — {exc}")
 
     try:
         candidates.append(collect_apod(session, day))
@@ -246,6 +281,22 @@ def build_edition(edition_date: str | None = None) -> int:
             for item in fallback["items"]
         ):
             fallback["items"].append(as_public_item(classic_candidate))
+        if poetry_candidate and not any(
+            isinstance(item, dict) and item.get("id", "").startswith("poetry-")
+            for item in fallback["items"]
+        ):
+            fallback["items"].append(as_public_item(poetry_candidate))
+        # Keep the clean-checkout edition bounded while retaining both anchors.
+        while len(fallback["items"]) > MAX_ITEMS:
+            removable = next(
+                (index for index in range(len(fallback["items"]) - 1, -1, -1)
+                 if not str(fallback["items"][index].get("id", "")).startswith(("classic-", "poetry-"))),
+                None,
+            )
+            if removable is None:
+                fallback["items"] = fallback["items"][:MAX_ITEMS]
+                break
+            fallback["items"].pop(removable)
         archive_and_publish(fallback)
         log("No sources available; published the bundled fallback edition.")
         return 0
