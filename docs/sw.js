@@ -1,4 +1,4 @@
-const CACHE = "morning-shell-v6";
+const CACHE = "morning-shell-v7";
 const SHELL = [
   "./",
   "./index.html",

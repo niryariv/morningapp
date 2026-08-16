@@ -672,11 +672,19 @@ class PwaTests(unittest.TestCase):
 
         self.assertIn("By Nir Yariv and Codex. Summer 2026", html)
         self.assertIn(
-            'href="https://github.com/niryariv/morningapp">View source on GitHub</a>',
+            'class="github-link" href="https://github.com/niryariv/morningapp" aria-label="View source on GitHub"',
             html,
         )
+        self.assertNotIn(">View source on GitHub</a>", html)
+        self.assertIn('<span class="repository-link">', html)
+        self.assertIn('<svg aria-hidden="true" focusable="false" viewBox="0 0 16 16">', html)
+        self.assertIn(".repository-link {", styles)
+        self.assertIn("display: inline-flex;", styles)
+        self.assertIn("width: 2.75rem;", styles)
+        self.assertIn("height: 2.75rem;", styles)
+        self.assertIn("fill: currentColor;", styles)
         self.assertIn("calc(var(--reader-size) * 0.68)", styles)
-        self.assertIn('const CACHE = "morning-shell-v6";', worker)
+        self.assertIn('const CACHE = "morning-shell-v7";', worker)
 
 
 if __name__ == "__main__":

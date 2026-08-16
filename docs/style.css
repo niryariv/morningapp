@@ -478,13 +478,41 @@ h1 {
 }
 
 .site-footer .site-credit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.35rem;
+  align-items: center;
+  justify-content: center;
   margin-top: 0.7rem;
   text-wrap: balance;
 }
 
-.site-credit a {
+.repository-link {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.github-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin-block: -0.65rem;
   color: var(--accent);
-  font-weight: 650;
+  border-radius: 50%;
+  text-decoration: none;
+}
+
+.github-link:hover {
+  background: var(--accent-soft);
+}
+
+.github-link svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: currentColor;
 }
 
 .sr-only {
