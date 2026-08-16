@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f0e8">
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171815">
+    <meta name="description" content="A calm, finite collection of interesting things to read each morning.">
+    <title>Morning</title>
+    <link rel="manifest" href="./manifest.webmanifest">
+    <link rel="icon" href="./icons/morning.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="./style.css">
+    <script src="./app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#edition">Skip to today’s reading</a>
+
+    <header class="site-header">
+      <div class="masthead">
+        <a class="wordmark" href="./" aria-label="Morning, today’s edition">
+          <svg aria-hidden="true" viewBox="0 0 40 40">
+            <path d="M5 25.5h30M9 20a11 11 0 0 1 22 0M20 3v5M6.5 10.5l3.8 3.8M33.5 10.5l-3.8 3.8"/>
+          </svg>
+          <span>Morning</span>
+        </a>
+
+        <div class="type-controls" role="group" aria-label="Text size">
+          <button id="type-smaller" type="button" aria-label="Decrease text size">A<span aria-hidden="true">−</span></button>
+          <button id="type-reset" class="type-reset" type="button" aria-label="Reset text size">A</button>
+          <button id="type-larger" type="button" aria-label="Increase text size">A<span aria-hidden="true">+</span></button>
+        </div>
+      </div>
+    </header>
+
+    <main id="edition" tabindex="-1">
+      <section class="edition-heading" aria-labelledby="edition-title">
+        <p id="edition-date" class="edition-date">Today</p>
+        <h1 id="edition-title">Seven interesting things for today.</h1>
+        <p class="intro">A small collection for a quieter start.</p>
+        <p id="fallback-note" class="fallback-note" hidden>This is the saved shelf edition. Fresh sources will return tomorrow.</p>
+      </section>
+
+      <div id="status" class="status" role="status" aria-live="polite">
+        <span class="status-mark" aria-hidden="true"></span>
+        <span>Opening today’s edition…</span>
+      </div>
+
+      <section id="items" class="items" aria-label="Today’s reading"></section>
+
+      <div id="ending" class="ending" hidden>
+        <svg aria-hidden="true" viewBox="0 0 48 24"><path d="M2 12h14M32 12h14M20 12a4 4 0 1 0 8 0 4 4 0 1 0-8 0Z"/></svg>
+        <p>That’s all for this morning.</p>
+        <span>Go have breakfast.</span>
+      </div>
+
+      <nav id="archive-nav" class="archive-nav" aria-label="Edition navigation" hidden>
+        <button id="older-edition" type="button">
+          <span aria-hidden="true">←</span> Previous
+        </button>
+        <button id="today-edition" class="today-button" type="button">Today</button>
+        <button id="newer-edition" type="button">
+          Next <span aria-hidden="true">→</span>
+        </button>
+      </nav>
+    </main>
+
+    <footer class="site-footer">
+      <p>No tracking. No trending. No more after the last card.</p>
+      <p id="generated-time"></p>
+    </footer>
+
+    <template id="card-template">
+      <article class="card">
+        <div class="card-copy">
+          <p class="card-label"></p>
+          <h2 class="card-title"><a target="_blank" rel="noopener noreferrer"></a></h2>
+          <p class="card-summary"></p>
+          <div class="card-footer">
+            <p class="card-meta"></p>
+            <a class="read-link" target="_blank" rel="noopener noreferrer">Read <span aria-hidden="true">→</span><span class="sr-only"> article</span></a>
+          </div>
+        </div>
+      </article>
+    </template>
+  </body>
+</html>
+

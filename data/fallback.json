@@ -1,0 +1,92 @@
+{
+  "date": "2026-08-16",
+  "generated_at": "2026-08-16T03:15:00Z",
+  "is_fallback": true,
+  "items": [
+    {
+      "id": "fallback-apod",
+      "category": "astronomy",
+      "label": "Image of the day",
+      "title": "The Milky Way over a quiet night landscape",
+      "summary": "Our galaxy appears as a pale river of light when the sky is dark enough. The view is a reminder that the Solar System sits inside a vast disk containing hundreds of billions of stars.",
+      "url": "https://apod.nasa.gov/apod/astropix.html",
+      "source": "NASA APOD",
+      "image": "https://commons.wikimedia.org/wiki/Special:FilePath/Milky_Way_Arch.jpg?width=1400",
+      "image_alt": "The Milky Way forming an arch across a dark night sky",
+      "published": null,
+      "reading_minutes": null,
+      "language": "en"
+    },
+    {
+      "id": "fallback-wikipedia-he",
+      "category": "discovery",
+      "label": "Wikipedia discovery",
+      "title": "נדידת בעלי חיים",
+      "summary": "בעלי חיים רבים יוצאים למסעות עונתיים ארוכים בין אזורי מחיה. ציפורים, לווייתנים, פרפרים ודגים מנווטים בעזרת השמש, הכוכבים, השדה המגנטי של כדור הארץ וסימנים סביבתיים נוספים.",
+      "url": "https://he.wikipedia.org/wiki/%D7%A0%D7%93%D7%99%D7%93%D7%AA_%D7%91%D7%A2%D7%9C%D7%99_%D7%97%D7%99%D7%99%D7%9D",
+      "source": "ויקיפדיה",
+      "image": null,
+      "image_alt": null,
+      "published": null,
+      "reading_minutes": null,
+      "language": "he"
+    },
+    {
+      "id": "fallback-quanta",
+      "category": "mathematics",
+      "label": "Mathematics",
+      "title": "Why prime numbers still surprise mathematicians",
+      "summary": "Prime numbers are simple to define but famously difficult to predict. Their patterns connect elementary arithmetic to some of the deepest unanswered questions in mathematics.",
+      "url": "https://www.quantamagazine.org/tag/prime-numbers/",
+      "source": "Quanta Magazine",
+      "image": null,
+      "image_alt": null,
+      "published": null,
+      "reading_minutes": null,
+      "language": "en"
+    },
+    {
+      "id": "fallback-earth",
+      "category": "nature",
+      "label": "Nature",
+      "title": "Earth from a scientist’s point of view",
+      "summary": "Satellite images turn forests, rivers, ice and deserts into records of a changing planet. Seen from above, familiar processes reveal patterns that are difficult to notice from the ground.",
+      "url": "https://earthobservatory.nasa.gov/images",
+      "source": "NASA Earth Observatory",
+      "image": null,
+      "image_alt": null,
+      "published": null,
+      "reading_minutes": null,
+      "language": "en"
+    },
+    {
+      "id": "fallback-hayadan",
+      "category": "science",
+      "label": "Science",
+      "title": "סקרנות היא נקודת הפתיחה של המדע",
+      "summary": "שאלה פשוטה על תופעה מוכרת יכולה להוביל לניסוי, לתצפית ולדרך חדשה להבין את העולם. אוסף הכתבות של הידען מציע נקודות כניסה רבות למדע בעברית.",
+      "url": "https://www.hayadan.org.il/",
+      "source": "הידען",
+      "image": null,
+      "image_alt": null,
+      "published": null,
+      "reading_minutes": null,
+      "language": "he"
+    },
+    {
+      "id": "fallback-aeon",
+      "category": "ideas",
+      "label": "Long read",
+      "title": "A slower way to encounter a difficult idea",
+      "summary": "An essay can offer something a stream of updates cannot: enough room for an argument to unfold, for uncertainty to remain visible, and for the reader to change their mind at an unhurried pace.",
+      "url": "https://aeon.co/essays",
+      "source": "Aeon",
+      "image": null,
+      "image_alt": null,
+      "published": null,
+      "reading_minutes": null,
+      "language": "en"
+    }
+  ]
+}
+

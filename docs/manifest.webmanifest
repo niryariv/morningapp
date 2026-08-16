@@ -1,0 +1,19 @@
+{
+  "name": "Morning",
+  "short_name": "Morning",
+  "description": "A calm, finite collection of interesting things to read each morning.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f0e8",
+  "theme_color": "#f4f0e8",
+  "icons": [
+    {
+      "src": "./icons/morning.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
