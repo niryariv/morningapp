@@ -14,7 +14,10 @@ from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 import requests
 from bs4 import BeautifulSoup
 
-from config import REQUEST_TIMEOUT, USER_AGENT
+try:
+    from .config import REQUEST_TIMEOUT, USER_AGENT
+except ImportError:  # Support direct execution via ``python scripts/update.py``.
+    from config import REQUEST_TIMEOUT, USER_AGENT
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,15 +64,41 @@ def first_image_from_html(value: str | None) -> str | None:
     return str(src).strip() if src else None
 
 
-def normalize_url(url: str) -> str:
+def normalize_url(url: Any) -> str:
+    if not isinstance(url, str):
+        return ""
     try:
         parts = urlsplit(url.strip())
+        if parts.scheme.lower() not in {"http", "https"} or not parts.hostname:
+            return ""
+        if parts.username or parts.password:
+            return ""
         excluded = {"utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "ref", "fbclid"}
         query = urlencode([(key, value) for key, value in parse_qsl(parts.query) if key.lower() not in excluded])
         path = parts.path.rstrip("/") or "/"
         return urlunsplit((parts.scheme.lower(), parts.netloc.lower(), path, query, ""))
     except ValueError:
-        return url.strip()
+        return ""
+
+
+def public_media_url(url: Any) -> str | None:
+    """Return an absolute HTTP(S) media URL, rejecting unsafe/relative values."""
+    if not isinstance(url, str):
+        return None
+    try:
+        parts = urlsplit(url.strip())
+        if parts.scheme.lower() not in {"http", "https"} or not parts.hostname:
+            return None
+        if parts.username or parts.password:
+            return None
+    except ValueError:
+        return None
+    return url.strip()
+
+
+def keyword_matches(text: str, term: str) -> bool:
+    """Match configured terms as words/phrases instead of arbitrary substrings."""
+    return re.search(rf"(?<!\w){re.escape(term.lower())}(?!\w)", text.lower()) is not None
 
 
 def stable_id(prefix: str, url: str) -> str:
@@ -113,4 +142,3 @@ def as_public_item(candidate: dict[str, Any]) -> dict[str, Any]:
         "image_alt", "published", "reading_minutes", "language",
     )
     return {field: candidate.get(field) for field in fields}
-

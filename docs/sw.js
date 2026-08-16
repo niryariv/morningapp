@@ -1,5 +1,14 @@
-const CACHE = "morning-shell-v1";
-const SHELL = ["./", "./index.html", "./style.css", "./app.js", "./manifest.webmanifest", "./icons/morning.svg"];
+const CACHE = "morning-shell-v2";
+const SHELL = [
+  "./",
+  "./index.html",
+  "./style.css",
+  "./app.js",
+  "./manifest.webmanifest",
+  "./icons/morning.svg",
+  "./data/today.json",
+  "./data/archive.json",
+];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)));
@@ -19,14 +28,18 @@ self.addEventListener("fetch", (event) => {
 
   event.respondWith(
     fetch(event.request)
-      .then((response) => {
+      .then(async (response) => {
         if (response.ok) {
           const copy = response.clone();
-          caches.open(CACHE).then((cache) => cache.put(event.request, copy));
+          const cache = await caches.open(CACHE);
+          await cache.put(event.request, copy);
         }
         return response;
       })
-      .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
+      .catch(() => caches.match(event.request).then((cached) => {
+        if (cached) return cached;
+        if (event.request.mode === "navigate") return caches.match("./index.html");
+        return Response.error();
+      }))
   );
 });
-

@@ -66,6 +66,18 @@
     return new Date(`${value}T12:00:00`);
   }
 
+  function isDateKey(value) {
+    if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+    const date = parseDate(value);
+    if (Number.isNaN(date.getTime())) return false;
+    const normalized = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0"),
+    ].join("-");
+    return normalized === value;
+  }
+
   function longDate(value) {
     return new Intl.DateTimeFormat("en", {
       weekday: "long",
@@ -79,29 +91,44 @@
     return new Intl.DateTimeFormat("en", { day: "numeric", month: "short" }).format(parseDate(value));
   }
 
-  function itemDirection(item) {
-    return item.language === "he" ? "rtl" : "ltr";
+  function safeHttpUrl(value) {
+    if (typeof value !== "string") return null;
+    try {
+      const url = new URL(value);
+      return url.protocol === "http:" || url.protocol === "https:" ? url.href : null;
+    } catch (_error) {
+      return null;
+    }
   }
 
-  function addImage(card, copy, item) {
-    if (!item.image) return;
+  function itemDirection(item) {
+    return /^he(?:-|$)/i.test(item.language || "") ? "rtl" : "ltr";
+  }
+
+  function addImage(card, copy, item, articleUrl) {
+    const imageUrl = safeHttpUrl(item.image);
+    if (!imageUrl) return;
     const figure = document.createElement("figure");
     figure.className = "card-media loading";
-    const link = document.createElement("a");
-    link.href = item.url;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.setAttribute("aria-label", `Open ${item.title}`);
     const image = document.createElement("img");
-    image.src = item.image;
+    image.src = imageUrl;
     image.alt = item.image_alt || "";
     image.loading = item.category === "astronomy" ? "eager" : "lazy";
     image.decoding = "async";
     image.referrerPolicy = "no-referrer";
     image.addEventListener("load", () => figure.classList.remove("loading"));
     image.addEventListener("error", () => figure.remove());
-    link.append(image);
-    figure.append(link);
+    if (articleUrl) {
+      const link = document.createElement("a");
+      link.href = articleUrl;
+      link.target = "_blank";
+      link.rel = "noopener noreferrer";
+      link.setAttribute("aria-label", `Open ${item.title || "article image"}`);
+      link.append(image);
+      figure.append(link);
+    } else {
+      figure.append(image);
+    }
     copy.insertBefore(figure, copy.querySelector(".card-footer"));
     card.classList.add("has-image");
   }
@@ -115,20 +142,28 @@
     const summary = fragment.querySelector(".card-summary");
     const meta = fragment.querySelector(".card-meta");
     const read = fragment.querySelector(".read-link");
+    const articleUrl = safeHttpUrl(item.url);
+    const title = item.title || "Untitled discovery";
+    const source = item.source || "";
 
     card.dir = itemDirection(item);
     card.lang = item.language || "en";
     if (item.category === "astronomy" && index === 0) card.classList.add("featured");
     label.textContent = item.label || item.category || "Discovery";
-    titleLink.textContent = item.title;
-    titleLink.href = item.url;
-    summary.textContent = item.summary;
-    read.href = item.url;
-    read.setAttribute("aria-label", `Read “${item.title}” at ${item.source}`);
-    const details = [item.source];
+    titleLink.textContent = title;
+    if (articleUrl) titleLink.href = articleUrl;
+    else titleLink.removeAttribute("href");
+    summary.textContent = item.summary || "";
+    if (articleUrl) {
+      read.href = articleUrl;
+      read.setAttribute("aria-label", `Read “${title}”${source ? ` at ${source}` : ""}`);
+    } else {
+      read.hidden = true;
+    }
+    const details = [source];
     if (item.reading_minutes) details.push(`${item.reading_minutes} min read`);
     meta.textContent = details.filter(Boolean).join(" · ");
-    addImage(card, copy, item);
+    addImage(card, copy, item, articleUrl);
     return fragment;
   }
 
@@ -169,13 +204,15 @@
   async function loadArchive() {
     try {
       const archive = await fetchJson("./data/archive.json");
-      archiveDates = Array.isArray(archive.dates) ? archive.dates.sort().reverse() : [];
+      archiveDates = Array.isArray(archive.dates)
+        ? [...new Set(archive.dates.filter(isDateKey))].sort().reverse()
+        : [];
     } catch (_error) {
       archiveDates = [];
     }
   }
 
-  async function loadEdition(requestedDate) {
+  async function loadEdition(requestedDate, moveFocus = false) {
     elements.status.hidden = false;
     elements.ending.hidden = true;
     elements.items.replaceChildren();
@@ -189,7 +226,14 @@
       if (requestedDate && requestedDate !== archiveDates[0]) url.searchParams.set("date", requestedDate);
       else url.searchParams.delete("date");
       window.history.replaceState({}, "", url);
+      if (moveFocus) elements.title.focus();
     } catch (_error) {
+      // A stale bookmark or a partially published archive must not strand the
+      // reader on an edition that can never load. Today may still be cached.
+      if (requestedDate) {
+        await loadEdition(null, moveFocus);
+        return;
+      }
       showError();
     }
   }
@@ -218,9 +262,9 @@
     elements.smaller.addEventListener("click", () => applyTypeSize(typeIndex - 1, true));
     elements.reset.addEventListener("click", () => applyTypeSize(defaultTypeIndex, true));
     elements.larger.addEventListener("click", () => applyTypeSize(typeIndex + 1, true));
-    elements.older.addEventListener("click", () => loadEdition(elements.older.dataset.date));
-    elements.newer.addEventListener("click", () => loadEdition(elements.newer.dataset.date));
-    elements.today.addEventListener("click", () => loadEdition(null));
+    elements.older.addEventListener("click", () => loadEdition(elements.older.dataset.date, true));
+    elements.newer.addEventListener("click", () => loadEdition(elements.newer.dataset.date, true));
+    elements.today.addEventListener("click", () => loadEdition(null, true));
   }
 
   async function start() {
@@ -228,7 +272,7 @@
     wireEvents();
     await loadArchive();
     const requestedDate = new URLSearchParams(window.location.search).get("date");
-    const safeDate = /^\d{4}-\d{2}-\d{2}$/.test(requestedDate || "") ? requestedDate : null;
+    const safeDate = isDateKey(requestedDate) ? requestedDate : null;
     await loadEdition(safeDate);
     if ("serviceWorker" in navigator && window.isSecureContext) {
       navigator.serviceWorker.register("./sw.js").catch(() => {});
@@ -237,4 +281,3 @@
 
   start();
 })();
-

@@ -5,7 +5,10 @@ from __future__ import annotations
 import os
 from typing import Any
 
-from utils import clean_text, fetch
+try:
+    from .utils import clean_text, fetch, public_media_url
+except ImportError:  # Support direct execution via ``python scripts/update.py``.
+    from utils import clean_text, fetch, public_media_url
 
 
 APOD_ENDPOINT = "https://api.nasa.gov/planetary/apod"
@@ -15,14 +18,18 @@ def collect_apod(session: Any, edition_date: str) -> dict[str, Any]:
     response = fetch(
         session,
         APOD_ENDPOINT,
-        params={"api_key": os.environ.get("NASA_API_KEY", "DEMO_KEY"), "date": edition_date},
+        params={
+            "api_key": os.environ.get("NASA_API_KEY") or "DEMO_KEY",
+            "date": edition_date,
+            "thumbs": "true",
+        },
     )
     payload = response.json()
     title = clean_text(payload.get("title"), 180)
     summary = clean_text(payload.get("explanation"), 500)
     source_url = f"https://apod.nasa.gov/apod/ap{edition_date[2:].replace('-', '')}.html"
     media_type = payload.get("media_type")
-    image = payload.get("url") if media_type == "image" else payload.get("thumbnail_url")
+    image = public_media_url(payload.get("url") if media_type == "image" else payload.get("thumbnail_url"))
     if not title or not summary:
         raise ValueError("APOD response lacks a title or explanation")
     return {
@@ -43,4 +50,3 @@ def collect_apod(session: Any, edition_date: str) -> dict[str, Any]:
         "is_long_read": False,
         "featured": True,
     }
-

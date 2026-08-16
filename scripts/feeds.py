@@ -8,8 +8,30 @@ from urllib.parse import urljoin
 
 import feedparser
 
-from config import NEGATIVE_KEYWORDS, POSITIVE_KEYWORDS, SOURCES, VISUAL_KEYWORDS
-from utils import clean_text, fetch, first_image_from_html, iso_date_from_struct, normalize_url, stable_id
+try:
+    from .config import NEGATIVE_KEYWORDS, POSITIVE_KEYWORDS, SOURCES, VISUAL_KEYWORDS
+    from .utils import (
+        clean_text,
+        fetch,
+        first_image_from_html,
+        iso_date_from_struct,
+        keyword_matches,
+        normalize_url,
+        public_media_url,
+        stable_id,
+    )
+except ImportError:  # Support direct execution via ``python scripts/update.py``.
+    from config import NEGATIVE_KEYWORDS, POSITIVE_KEYWORDS, SOURCES, VISUAL_KEYWORDS
+    from utils import (
+        clean_text,
+        fetch,
+        first_image_from_html,
+        iso_date_from_struct,
+        keyword_matches,
+        normalize_url,
+        public_media_url,
+        stable_id,
+    )
 
 
 def _entry_image(entry: Any, base_url: str) -> str | None:
@@ -17,13 +39,17 @@ def _entry_image(entry: Any, base_url: str) -> str | None:
         for media in entry.get(field, []):
             value = media.get("url")
             if value:
-                return urljoin(base_url, value)
+                safe_url = public_media_url(urljoin(base_url, value))
+                if safe_url:
+                    return safe_url
 
     for enclosure in entry.get("enclosures", []):
         value = enclosure.get("href") or enclosure.get("url")
         media_type = enclosure.get("type", "")
         if value and (media_type.startswith("image/") or not media_type):
-            return urljoin(base_url, value)
+            safe_url = public_media_url(urljoin(base_url, value))
+            if safe_url:
+                return safe_url
 
     for field in ("summary", "description", "content"):
         value = entry.get(field)
@@ -31,28 +57,30 @@ def _entry_image(entry: Any, base_url: str) -> str | None:
             value = " ".join(part.get("value", "") for part in value)
         image = first_image_from_html(value)
         if image:
-            return urljoin(base_url, image)
+            safe_url = public_media_url(urljoin(base_url, image))
+            if safe_url:
+                return safe_url
     return None
 
 
 def _category(source: dict[str, Any], title: str, summary: str) -> str:
     text = f"{title} {summary}".lower()
-    if any(word in text for word in ("math", "geometry", "number theory", "algorithm", "מתמט")):
+    if any(keyword_matches(text, word) for word in ("math", "mathematics", "mathematical", "geometry", "number theory", "algorithm", "מתמטיקה")):
         return "mathematics"
-    if any(word in text for word in ("archaeolog", "ancient", "museum", "artifact", "מאובן", "ארכאולוג")):
+    if any(keyword_matches(text, word) for word in ("archaeology", "archaeological", "ancient", "museum", "artifact", "מאובן", "ארכאולוגיה", "ארכאולוגי")):
         return "history"
-    if any(word in text for word in ("ocean", "forest", "animal", "ecology", "earth", "climate", "טבע", "סביבה")):
+    if any(keyword_matches(text, word) for word in ("ocean", "forest", "animal", "ecology", "earth", "climate", "טבע", "סביבה")):
         return "nature"
     return source["category"]
 
 
 def _score(source: dict[str, Any], title: str, summary: str, image: str | None) -> tuple[int, dict[str, int]]:
     text = f"{title} {summary}".lower()
-    interest = min(5, 2 + source["weight"] // 2 + sum(term in text for term in POSITIVE_KEYWORDS))
+    interest = min(5, 2 + source["weight"] // 2 + sum(keyword_matches(text, term) for term in POSITIVE_KEYWORDS))
     timelessness = 4 if source["category"] in {"history", "ideas", "nature"} else 3
-    visual = 1 + (2 if image else 0) + min(2, sum(term in text for term in VISUAL_KEYWORDS))
-    positivity = 3 + min(2, sum(term in text for term in POSITIVE_KEYWORDS))
-    penalty = sum(value for term, value in NEGATIVE_KEYWORDS.items() if term in text)
+    visual = 1 + (2 if image else 0) + min(2, sum(keyword_matches(text, term) for term in VISUAL_KEYWORDS))
+    positivity = 3 + min(2, sum(keyword_matches(text, term) for term in POSITIVE_KEYWORDS))
+    penalty = sum(value for term, value in NEGATIVE_KEYWORDS.items() if keyword_matches(text, term))
     score = interest * 3 + timelessness * 2 + visual + positivity + source["weight"] - penalty
     return score, {
         "interest_score": interest,
@@ -71,42 +99,47 @@ def collect_feed(session: Any, source: dict[str, Any]) -> list[dict[str, Any]]:
 
     candidates: list[dict[str, Any]] = []
     for entry in parsed.entries[:16]:
-        title = clean_text(entry.get("title"), 180)
-        url = normalize_url(entry.get("link", ""))
-        raw_summary = entry.get("summary") or entry.get("description") or ""
-        summary = clean_text(raw_summary)
-        summary = re.sub(
-            r"\s+The post\b.*?\bappeared first on\b.*$",
-            "",
-            summary,
-            flags=re.IGNORECASE,
-        ).strip()
-        if not title or not url or len(summary) < 55:
+        try:
+            title = clean_text(entry.get("title"), 180)
+            raw_url = entry.get("link", "")
+            url = normalize_url(urljoin(source["feed"], raw_url)) if isinstance(raw_url, str) else ""
+            raw_summary = entry.get("summary") or entry.get("description") or ""
+            summary = clean_text(raw_summary)
+            summary = re.sub(
+                r"\s+The post\b.*?\bappeared first on\b.*$",
+                "",
+                summary,
+                flags=re.IGNORECASE,
+            ).strip()
+            if not title or not url or len(summary) < 55:
+                continue
+            image = _entry_image(entry, url)
+            score, score_parts = _score(source, title, summary, image)
+            category = _category(source, title, summary)
+            long_read_path = source.get("long_read_path")
+            is_long_read = bool(source.get("long_read")) and (not long_read_path or long_read_path in url)
+            label = "Long read" if is_long_read else category.replace("_", " ").title()
+            candidate = {
+                "id": stable_id("feed", url),
+                "category": category,
+                "label": label,
+                "title": title,
+                "summary": summary,
+                "url": url,
+                "source": source["name"],
+                "image": image,
+                "image_alt": title if image else None,
+                "published": iso_date_from_struct(entry.get("published_parsed") or entry.get("updated_parsed")),
+                "reading_minutes": None,
+                "language": source["language"],
+                "score": score,
+                "score_parts": score_parts,
+                "is_long_read": is_long_read,
+            }
+            candidates.append(candidate)
+        except (AttributeError, TypeError, ValueError):
+            # One malformed publisher entry must not discard the rest of its feed.
             continue
-        image = _entry_image(entry, url)
-        score, score_parts = _score(source, title, summary, image)
-        category = _category(source, title, summary)
-        long_read_path = source.get("long_read_path")
-        is_long_read = bool(source.get("long_read")) and (not long_read_path or long_read_path in url)
-        label = "Long read" if is_long_read else category.replace("_", " ").title()
-        candidate = {
-            "id": stable_id("feed", url),
-            "category": category,
-            "label": label,
-            "title": title,
-            "summary": summary,
-            "url": url,
-            "source": source["name"],
-            "image": image,
-            "image_alt": title if image else None,
-            "published": iso_date_from_struct(entry.get("published_parsed") or entry.get("updated_parsed")),
-            "reading_minutes": None,
-            "language": source["language"],
-            "score": score,
-            "score_parts": score_parts,
-            "is_long_read": is_long_read,
-        }
-        candidates.append(candidate)
     return candidates
 
 

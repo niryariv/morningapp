@@ -5,8 +5,12 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from config import LOW_VALUE_WIKIPEDIA_TERMS, NEGATIVE_KEYWORDS, POSITIVE_KEYWORDS
-from utils import clean_text, fetch, stable_id
+try:
+    from .config import LOW_VALUE_WIKIPEDIA_TERMS, NEGATIVE_KEYWORDS, POSITIVE_KEYWORDS
+    from .utils import clean_text, fetch, keyword_matches, normalize_url, public_media_url, stable_id
+except ImportError:  # Support direct execution via ``python scripts/update.py``.
+    from config import LOW_VALUE_WIKIPEDIA_TERMS, NEGATIVE_KEYWORDS, POSITIVE_KEYWORDS
+    from utils import clean_text, fetch, keyword_matches, normalize_url, public_media_url, stable_id
 
 
 WIKIPEDIA_API = "https://he.wikipedia.org/w/api.php"
@@ -54,19 +58,22 @@ def collect_wikipedia(session: Any, seen_titles: set[str], edition_date: str) ->
 
     candidates: list[dict[str, Any]] = []
     for page in pages:
+        if not isinstance(page, dict):
+            continue
         title = clean_text(page.get("title"), 180)
         summary = clean_text(page.get("extract"), 480)
-        url = page.get("fullurl")
+        url = normalize_url(page.get("fullurl", ""))
         combined = f"{title} {summary}".lower()
         if not title or not url or len(summary) < 180 or title in seen_titles:
             continue
-        if any(term in combined for term in LOW_VALUE_WIKIPEDIA_TERMS):
+        if any(keyword_matches(combined, term) for term in LOW_VALUE_WIKIPEDIA_TERMS):
             continue
-        penalty = sum(value for term, value in NEGATIVE_KEYWORDS.items() if term in combined)
+        penalty = sum(value for term, value in NEGATIVE_KEYWORDS.items() if keyword_matches(combined, term))
         if penalty >= 7:
             continue
-        image = page.get("thumbnail", {}).get("source")
-        curiosity_bonus = min(4, sum(term in combined for term in POSITIVE_KEYWORDS))
+        thumbnail = page.get("thumbnail")
+        image = public_media_url(thumbnail.get("source")) if isinstance(thumbnail, dict) else None
+        curiosity_bonus = min(4, sum(keyword_matches(combined, term) for term in POSITIVE_KEYWORDS))
         candidates.append({
             "id": stable_id("wikipedia", url),
             "category": "discovery",

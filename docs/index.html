@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https: data:; connect-src 'self'; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f4f0e8">
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#171815">
     <meta name="description" content="A calm, finite collection of interesting things to read each morning.">
@@ -35,7 +36,7 @@
     <main id="edition" tabindex="-1">
       <section class="edition-heading" aria-labelledby="edition-title">
         <p id="edition-date" class="edition-date">Today</p>
-        <h1 id="edition-title">Seven interesting things for today.</h1>
+        <h1 id="edition-title" tabindex="-1">Seven interesting things for today.</h1>
         <p class="intro">A small collection for a quieter start.</p>
         <p id="fallback-note" class="fallback-note" hidden>This is the saved shelf edition. Fresh sources will return tomorrow.</p>
       </section>
@@ -84,4 +85,3 @@
     </template>
   </body>
 </html>
-

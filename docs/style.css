@@ -308,8 +308,10 @@ h1 {
 .read-link {
   flex: none;
   color: var(--accent);
+  direction: ltr;
   font: 740 0.72rem/1.4 var(--sans);
   text-decoration: none;
+  unicode-bidi: isolate;
 }
 
 .card[dir="rtl"] .card-copy {
@@ -498,4 +500,3 @@ h1 {
     transition-duration: 0.01ms !important;
   }
 }
-

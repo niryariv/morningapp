@@ -14,12 +14,17 @@ from zoneinfo import ZoneInfo
 
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parent))
-
-from apod import collect_apod
-from config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
-from feeds import collect_all_feeds
-from utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
-from wikipedia import collect_wikipedia
+    from apod import collect_apod
+    from config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
+    from feeds import collect_all_feeds
+    from utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
+    from wikipedia import collect_wikipedia
+else:
+    from .apod import collect_apod
+    from .config import HISTORY_DAYS, MAX_ITEMS, MIN_QUALITY_SCORE
+    from .feeds import collect_all_feeds
+    from .utils import DATA_DIR, DOCS_DATA_DIR, as_public_item, get_session, normalize_url, read_json, utc_now, write_json
+    from .wikipedia import collect_wikipedia
 
 
 ISRAEL_TZ = ZoneInfo("Asia/Jerusalem")
@@ -35,9 +40,15 @@ def load_recent_history(edition_day: datetime) -> tuple[set[str], set[str]]:
     for offset in range(1, HISTORY_DAYS + 1):
         path = DATA_DIR / "history" / f"{(edition_day - timedelta(days=offset)).date().isoformat()}.json"
         edition = read_json(path, {})
-        for item in edition.get("items", []):
+        if not isinstance(edition, dict) or not isinstance(edition.get("items"), list):
+            continue
+        for item in edition["items"]:
+            if not isinstance(item, dict):
+                continue
             if item.get("url"):
-                urls.add(normalize_url(item["url"]))
+                normalized_url = normalize_url(item["url"])
+                if normalized_url:
+                    urls.add(normalized_url)
             if item.get("source") in {"Wikipedia", "ויקיפדיה"} and item.get("title"):
                 wikipedia_titles.add(item["title"])
     return urls, wikipedia_titles
@@ -46,6 +57,8 @@ def load_recent_history(edition_day: datetime) -> tuple[set[str], set[str]]:
 def select_items(candidates: list[dict[str, Any]], seen_urls: set[str]) -> list[dict[str, Any]]:
     unique: dict[str, dict[str, Any]] = {}
     for item in candidates:
+        if not isinstance(item, dict):
+            continue
         url = normalize_url(item.get("url", ""))
         if not url or url in seen_urls or item.get("score", 0) < MIN_QUALITY_SCORE:
             continue
@@ -108,8 +121,14 @@ def select_items(candidates: list[dict[str, Any]], seen_urls: set[str]) -> list[
 def archive_and_publish(edition: dict[str, Any]) -> None:
     current_path = DATA_DIR / "today.json"
     previous = read_json(current_path)
-    if previous and previous.get("date"):
-        write_json(DATA_DIR / "history" / f"{previous['date']}.json", previous)
+    if isinstance(previous, dict) and previous.get("date"):
+        previous_date = previous["date"]
+        try:
+            parsed_previous_date = datetime.strptime(previous_date, "%Y-%m-%d").date().isoformat()
+        except (TypeError, ValueError):
+            parsed_previous_date = None
+        if parsed_previous_date == previous_date:
+            write_json(DATA_DIR / "history" / f"{previous_date}.json", previous)
 
     write_json(current_path, edition)
     write_json(DATA_DIR / "history" / f"{edition['date']}.json", edition)
@@ -174,12 +193,12 @@ def build_edition(edition_date: str | None = None) -> int:
 
     if successful_sources == 0 or not selected:
         existing = read_json(DATA_DIR / "today.json")
-        if existing and existing.get("items"):
+        if isinstance(existing, dict) and isinstance(existing.get("items"), list) and existing["items"]:
             sync_public_data()
             log("All fetching failed; preserved the previous edition.")
             return 0
         fallback = read_json(DATA_DIR / "fallback.json")
-        if not fallback:
+        if not isinstance(fallback, dict) or not isinstance(fallback.get("items"), list) or not fallback["items"]:
             log("ERROR: no sources and no fallback edition are available")
             return 1
         fallback["date"] = day

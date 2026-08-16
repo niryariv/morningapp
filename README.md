@@ -83,11 +83,12 @@ python scripts/update.py
 ## Publish with GitHub Pages
 
 1. Create a GitHub repository and push these files to its default branch.
-2. Open **Settings → Pages**.
-3. Under **Build and deployment**, select **GitHub Actions** as the source.
-4. Open **Actions → Update Morning edition → Run workflow** for the first manual update.
+2. If the repository is a fork, open **Actions** and enable its workflows.
+3. Open **Settings → Pages**.
+4. Under **Build and deployment**, select **GitHub Actions** as the source.
+5. Open **Actions → Update Morning edition → Run workflow** for the first manual update.
 
-The same workflow generates, commits, and deploys the edition. It uses the repository's built-in `GITHUB_TOKEN`; no personal access token is needed. The site uses relative URLs and therefore works at either a user domain or a project path such as `username.github.io/morning/`.
+The same workflow checks out the repository's default branch, generates and validates the edition, commits the generated data, and deploys it. It uses the repository's built-in `GITHUB_TOKEN`; no personal access token is needed. The site uses relative URLs and therefore works at either a user domain or a project path such as `username.github.io/morning/`.
 
 If the default branch is protected against Action commits, allow GitHub Actions to write to it or adjust the workflow to commit through your normal review process.
 
