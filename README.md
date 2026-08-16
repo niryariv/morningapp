@@ -122,7 +122,9 @@ If the default branch is protected against Action commits, allow GitHub Actions 
 
 Each successful edition is saved as `data/history/YYYY-MM-DD.json` and mirrored to `docs/data/history/`. `docs/data/archive.json` powers the bounded previous/next navigation; it does not append an endless archive to the page. Deduplication examines the most recent 30 dates.
 
-The small service worker caches the app shell and successfully opened edition files. This allows the most recently visited edition to remain readable offline after the first visit. Remote publisher images may not be available offline, and missing images are removed without breaking the card.
+Morning is installable from supported desktop and mobile browsers. The manifest uses paths relative to the app, so its start URL and service-worker scope remain correct when hosted below the `/morningapp/` GitHub Pages path. It includes conventional 192 px and 512 px PNG icons, a maskable icon, and an Apple touch icon in addition to the scalable SVG.
+
+The small service worker precaches the app shell, icon set, archive index, and today's edition when it installs. It then caches successfully opened edition files. This allows today's edition and the most recently visited archive entries to remain readable offline after the first successful visit. Offline navigation falls back only to the cached app page; missing non-navigation resources fail normally. Remote publisher images may not be available offline, and missing images are removed without breaking the card.
 
 ## Repository map
 
@@ -151,4 +153,3 @@ docs/                         Complete static site published to Pages
 - There is no translation. English and Hebrew articles appear in their original language.
 - The bundled classics rights notes follow Project Gutenberg's United States determinations; reuse elsewhere may require a local copyright check.
 - The bundled poetry shelf uses Gutenberg's United States determinations and Ben-Yehuda's explicit public-domain labels; downstream reuse should still check applicable local law.
-- The PWA uses a scalable SVG icon. Some older mobile launchers may prefer separately supplied PNG icons.

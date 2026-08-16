@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+import struct
 import subprocess
 import sys
 import tempfile
 import unittest
+import zlib
 from datetime import datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -497,6 +499,103 @@ class EntrypointTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("Edition date", result.stdout)
+
+
+class PwaTests(unittest.TestCase):
+    def test_manifest_is_installable_from_a_github_pages_subpath(self):
+        manifest = utils.read_json(ROOT / "docs" / "manifest.webmanifest")
+        self.assertEqual(manifest["id"], "./")
+        self.assertEqual(manifest["start_url"], "./")
+        self.assertEqual(manifest["scope"], "./")
+        self.assertEqual(manifest["display"], "standalone")
+
+        icons = {(icon["sizes"], icon["type"], icon["purpose"]): icon["src"] for icon in manifest["icons"]}
+        self.assertIn(("192x192", "image/png", "any"), icons)
+        self.assertIn(("512x512", "image/png", "any"), icons)
+        self.assertIn(("512x512", "image/png", "maskable"), icons)
+        for src in icons.values():
+            self.assertTrue(src.startswith("./icons/"))
+            self.assertTrue((ROOT / "docs" / src.removeprefix("./")).is_file())
+
+    def test_png_icon_dimensions_match_manifest(self):
+        for name, expected in {
+            "morning-180.png": (180, 180),
+            "morning-192.png": (192, 192),
+            "morning-512.png": (512, 512),
+            "morning-maskable-512.png": (512, 512),
+        }.items():
+            payload = (ROOT / "docs" / "icons" / name).read_bytes()
+            self.assertEqual(payload[:8], b"\x89PNG\r\n\x1a\n")
+            self.assertEqual(struct.unpack(">II", payload[16:24]), expected)
+
+    def test_png_icons_have_opaque_background_and_visible_sunrise_mark(self):
+        def colors_in_indexed_png(path):
+            payload = path.read_bytes()
+            position = 8
+            chunks = {}
+            while position < len(payload):
+                length = struct.unpack(">I", payload[position:position + 4])[0]
+                kind = payload[position + 4:position + 8]
+                chunks.setdefault(kind, b"")
+                chunks[kind] += payload[position + 8:position + 8 + length]
+                position += length + 12
+            width, height, depth, color_type = struct.unpack(">IIBB", chunks[b"IHDR"][:10])
+            self.assertEqual((depth, color_type), (8, 3))
+            self.assertNotIn(b"tRNS", chunks)
+            palette = [tuple(chunks[b"PLTE"][i:i + 3]) for i in range(0, len(chunks[b"PLTE"]), 3)]
+            encoded = zlib.decompress(chunks[b"IDAT"])
+            colors = []
+            prior = bytearray(width)
+            offset = 0
+            for _ in range(height):
+                filter_type = encoded[offset]
+                source = encoded[offset + 1:offset + 1 + width]
+                offset += width + 1
+                row = bytearray(width)
+                for index, byte in enumerate(source):
+                    left = row[index - 1] if index else 0
+                    up = prior[index]
+                    upper_left = prior[index - 1] if index else 0
+                    if filter_type == 0:
+                        value = byte
+                    elif filter_type == 1:
+                        value = byte + left
+                    elif filter_type == 2:
+                        value = byte + up
+                    elif filter_type == 3:
+                        value = byte + ((left + up) // 2)
+                    else:
+                        estimate = left + up - upper_left
+                        nearest = min((left, up, upper_left), key=lambda value: abs(estimate - value))
+                        value = byte + nearest
+                    row[index] = value % 256
+                colors.extend(palette[index] for index in row)
+                prior = row
+            return colors
+
+        for name in (
+            "morning-180.png", "morning-192.png", "morning-512.png", "morning-maskable-512.png",
+        ):
+            colors = colors_in_indexed_png(ROOT / "docs" / "icons" / name)
+            self.assertGreater(colors.count((244, 240, 232)), len(colors) // 2)
+            self.assertGreater(colors.count((49, 95, 81)), len(colors) // 100)
+
+    def test_install_metadata_and_worker_cover_offline_shell(self):
+        html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+        worker = (ROOT / "docs" / "sw.js").read_text(encoding="utf-8")
+        app = (ROOT / "docs" / "app.js").read_text(encoding="utf-8")
+
+        self.assertIn('rel="manifest" href="./manifest.webmanifest"', html)
+        self.assertIn('rel="apple-touch-icon" href="./icons/morning-180.png"', html)
+        self.assertIn('name="theme-color" media="(prefers-color-scheme: dark)"', html)
+        self.assertIn('navigator.serviceWorker.register("./sw.js")', app)
+        for resource in (
+            "./index.html", "./style.css", "./app.js", "./manifest.webmanifest",
+            "./data/today.json", "./data/archive.json", "./icons/morning-512.png",
+        ):
+            self.assertIn(f'"{resource}"', worker)
+        self.assertIn('event.request.mode === "navigate"', worker)
+        self.assertIn('caches.match("./index.html")', worker)
 
 
 if __name__ == "__main__":

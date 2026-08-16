@@ -1,4 +1,4 @@
-const CACHE = "morning-shell-v3";
+const CACHE = "morning-shell-v4";
 const SHELL = [
   "./",
   "./index.html",
@@ -6,6 +6,10 @@ const SHELL = [
   "./app.js",
   "./manifest.webmanifest",
   "./icons/morning.svg",
+  "./icons/morning-180.png",
+  "./icons/morning-192.png",
+  "./icons/morning-512.png",
+  "./icons/morning-maskable-512.png",
   "./data/today.json",
   "./data/archive.json",
 ];
